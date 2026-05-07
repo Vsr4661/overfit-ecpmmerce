@@ -1,0 +1,21 @@
+import { NextResponse } from "next/server";
+import { getAuthCookieName } from "@/lib/auth";
+
+export async function POST() {
+  const response = NextResponse.json({ message: "Logged out" });
+  response.cookies.set(getAuthCookieName(), "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
+  response.cookies.set("overfit_admin_session", "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
+  return response;
+}
