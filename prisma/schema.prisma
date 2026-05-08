@@ -3,22 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-enum UserRole {
-  CUSTOMER
-  ADMIN
-}
-
-enum OrderStatus {
-  PENDING
-  PAID
-  PACKED
-  SHIPPED
-  DELIVERED
-  CANCELLED
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model User {
@@ -26,7 +12,7 @@ model User {
   email     String   @unique
   name      String?
   password  String
-  role      UserRole @default(CUSTOMER)
+  role      String   @default("CUSTOMER")
   orders    Order[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -47,7 +33,7 @@ model Product {
   name        String
   slug        String      @unique
   description String
-  price       Decimal     @db.Decimal(10, 2)
+  price       Float
   imageUrl    String
   inventory   Int         @default(0)
   isActive    Boolean     @default(true)
@@ -65,10 +51,10 @@ model Order {
   orderNumber       String      @unique
   userId            String?
   user              User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
-  status            OrderStatus @default(PENDING)
-  subtotal          Decimal     @db.Decimal(10, 2)
-  shippingFee       Decimal     @db.Decimal(10, 2)
-  total             Decimal     @db.Decimal(10, 2)
+  status            String      @default("PENDING")
+  subtotal          Float
+  shippingFee       Float
+  total             Float
   customerName      String
   customerEmail     String
   shippingAddress   String
@@ -86,7 +72,7 @@ model OrderItem {
   productId String
   product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
   quantity  Int
-  price     Decimal  @db.Decimal(10, 2)
+  price     Float
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

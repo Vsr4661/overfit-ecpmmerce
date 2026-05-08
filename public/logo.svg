@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 32" role="img" aria-labelledby="logoTitle">
+  <title id="logoTitle">Overfit logo</title>
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#111827" />
+      <stop offset="100%" stop-color="#4f46e5" />
+    </linearGradient>
+  </defs>
+  <rect width="120" height="32" rx="8" fill="#f8fafc" />
+  <path d="M16 8h-8v16h8c4.4 0 8-3.6 8-8s-3.6-8-8-8zm0 12h-4v-8h4c2.2 0 4 1.8 4 4s-1.8 4-4 4z" fill="url(#logoGradient)" />
+  <text x="40" y="21" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#111827">OVERFIT</text>
+</svg>

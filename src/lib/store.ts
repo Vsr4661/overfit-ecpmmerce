@@ -1,23 +1,17 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { mockOrders, mockProducts } from "@/lib/mock-data";
-import { Order, Product } from "@/types";
+import { Order, OrderStatus, Product } from "@/types";
 
-function prismaProductToProduct(product: {
-  id: string;
-  name: string;
-  slug: string;
-  description: string;
-  price: { toNumber: () => number };
-  imageUrl: string;
-  inventory: number;
-  category: { name: string };
-}): Product {
+function prismaProductToProduct(
+  product: Prisma.ProductGetPayload<{ include: { category: true } }>
+): Product {
   return {
     id: product.id,
     name: product.name,
     slug: product.slug,
     description: product.description,
-    price: product.price.toNumber(),
+    price: product.price,
     imageUrl: product.imageUrl,
     category: product.category.name,
     inventory: product.inventory,
@@ -65,10 +59,10 @@ export async function getOrderById(orderId: string): Promise<Order | null> {
       customerName: order.customerName,
       customerEmail: order.customerEmail,
       shippingAddress: order.shippingAddress,
-      subtotal: order.subtotal.toNumber(),
-      shippingFee: order.shippingFee.toNumber(),
-      total: order.total.toNumber(),
-      status: order.status,
+      subtotal: order.subtotal,
+      shippingFee: order.shippingFee,
+      total: order.total,
+      status: order.status as OrderStatus,
       createdAt: order.createdAt.toISOString(),
       items: order.items.map((item: (typeof order.items)[number]) => ({
         id: item.id,
@@ -77,7 +71,7 @@ export async function getOrderById(orderId: string): Promise<Order | null> {
           name: item.product.name,
           slug: item.product.slug,
           description: item.product.description,
-          price: item.product.price.toNumber(),
+          price: item.product.price,
           imageUrl: item.product.imageUrl,
           category: item.product.category.name,
           inventory: item.product.inventory,
