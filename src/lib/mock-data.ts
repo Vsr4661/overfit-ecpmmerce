@@ -37,7 +37,7 @@ export const mockProducts: Product[] = [
     slug: "monochrome-hoodie",
     description: "Brushed fleece hoodie designed for oversized layering.",
     price: 2499,
-    imageUrl: "https://images.unsplash.com/photo-1556821840-3a9fbc4f79b2?w=1400",
+    imageUrl: "https://images.unsplash.com/photo-1506629905607-0b5b8b5b9b5b?w=1400",
     category: "Hoodies",
     inventory: 42,
   },

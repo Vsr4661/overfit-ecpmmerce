@@ -1,16 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const nextPath = searchParams.get("next") ?? "/admin";
+  const [nextPath, setNextPath] = useState("/admin");
   const [email, setEmail] = useState("admin@overfit.com");
   const [password, setPassword] = useState("overfit-admin");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setNextPath(params.get("next") ?? "/admin");
+  }, []);
+
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();

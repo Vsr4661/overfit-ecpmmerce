@@ -1,166 +1,132 @@
 import Link from "next/link";
+import { ProductCard } from "@/components/store/ProductCard";
 import { getProducts } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
 
-const testimonials = [
-  {
-    quote:
-      "Overfit pieces feel like runway silhouettes made practical for everyday city life.",
-    name: "Rhea Malhotra",
-    role: "Fashion Stylist, Mumbai",
-  },
-  {
-    quote:
-      "The fit, fabric, and finish are in a different league. Every drop sells out for a reason.",
-    name: "Kabir Arora",
-    role: "Creative Director",
-  },
-  {
-    quote:
-      "Minimal branding, premium construction, and perfect oversized cuts. Exactly my vibe.",
-    name: "Aman Verma",
-    role: "Overfit Customer",
-  },
-];
-
-export default async function Home() {
+export default async function HomePage() {
   const products = await getProducts();
-  const featuredCollection = products.slice(0, 3);
-  const bestSellers = products.slice(0, 4);
 
   return (
-    <div className="-mx-4 bg-zinc-950 px-4 text-zinc-100">
-      <section className="mx-auto max-w-6xl border-b border-zinc-800 py-20 sm:py-28">
-        <p className="text-xs uppercase tracking-[0.35em] text-zinc-400">Overfit / Luxury Streetwear</p>
-        <h1 className="mt-5 max-w-4xl text-5xl font-semibold tracking-tight sm:text-7xl">
-          Elevated streetwear for the new city uniform.
-        </h1>
-        <p className="mt-6 max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base">
-          Overfit blends precision tailoring with bold, oversized silhouettes to deliver a modern
-          high-fashion wardrobe built for movement.
-        </p>
-        <div className="mt-9 flex flex-wrap gap-3">
-          <Link
-            href="/products"
-            className="rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition hover:bg-zinc-200"
-          >
-            Shop Now
-          </Link>
-          <Link
-            href="/products"
-            className="rounded-full border border-zinc-700 px-6 py-3 text-sm font-medium transition hover:border-zinc-500"
-          >
-            View Lookbook
-          </Link>
+    <div className="min-h-screen bg-gray-50">
+      {/* Hero Section */}
+      <section className="bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+          <div className="text-center">
+            <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
+              OVERFIT
+            </h1>
+            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+              Premium streetwear designed for the modern individual.
+              Quality craftsmanship meets urban style.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/shop"
+                className="bg-black text-white px-8 py-3 rounded-md font-medium hover:bg-gray-800 transition-colors"
+              >
+                Shop Collection
+              </Link>
+              <Link
+                href="/products"
+                className="border border-gray-300 text-gray-700 px-8 py-3 rounded-md font-medium hover:bg-gray-50 transition-colors"
+              >
+                View All Products
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl border-b border-zinc-800 py-16 sm:py-20">
-        <div className="mb-8 flex items-end justify-between">
-          <h2 className="text-3xl font-semibold sm:text-4xl">Featured Collection</h2>
-          <Link href="/products" className="text-sm text-zinc-400 hover:text-white">
-            Explore all
-          </Link>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {featuredCollection.map((product) => (
-            <article
-              key={product.id}
-              className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 transition hover:border-zinc-600"
-            >
-              <p className="text-xs uppercase tracking-[0.25em] text-zinc-400">{product.category}</p>
-              <h3 className="mt-3 text-2xl font-medium">{product.name}</h3>
-              <p className="mt-4 text-sm leading-7 text-zinc-400">{product.description}</p>
-              <p className="mt-6 text-sm font-semibold">{formatCurrency(product.price)}</p>
-            </article>
-          ))}
+      {/* Featured Products */}
+      <section className="py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Featured Products
+            </h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Discover our latest drops and best-sellers
+            </p>
+          </div>
+
+          {products.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {products.slice(0, 4).map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="bg-white border border-gray-200 rounded-lg p-8 max-w-md mx-auto">
+                <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Products Yet</h3>
+                <p className="text-gray-600">Check back soon for new arrivals!</p>
+              </div>
+            </div>
+          )}
+
+          {products.length > 4 && (
+            <div className="text-center mt-12">
+              <Link
+                href="/products"
+                className="inline-flex items-center px-6 py-3 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition-colors"
+              >
+                View All Products
+                <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl border-b border-zinc-800 py-16 sm:py-20">
-        <h2 className="text-3xl font-semibold sm:text-4xl">Best Sellers</h2>
-        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {bestSellers.map((product) => (
+      {/* Categories Section */}
+      <section className="bg-white py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Shop by Category
+            </h2>
+            <p className="text-gray-600">
+              Find exactly what you're looking for
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <Link
-              key={product.id}
-              href={`/products/${product.slug}`}
-              className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 transition hover:border-zinc-600"
+              href="/products?category=T-Shirts"
+              className="group relative overflow-hidden rounded-lg bg-gray-100 aspect-square"
             >
-              <p className="text-sm text-zinc-300">{product.name}</p>
-              <p className="mt-2 text-xs uppercase tracking-[0.2em] text-zinc-500">{product.category}</p>
-              <p className="mt-5 text-sm font-semibold">{formatCurrency(product.price)}</p>
+              <div className="absolute inset-0 bg-black bg-opacity-40 group-hover:bg-opacity-30 transition-all duration-300" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <h3 className="text-white text-2xl font-bold">T-Shirts</h3>
+              </div>
             </Link>
-          ))}
-        </div>
-      </section>
 
-      <section className="mx-auto grid max-w-6xl gap-10 border-b border-zinc-800 py-16 sm:grid-cols-2 sm:py-20">
-        <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Brand Story</p>
-          <h2 className="mt-4 text-3xl font-semibold sm:text-4xl">
-            Designed in India. Inspired by global street culture.
-          </h2>
-        </div>
-        <p className="text-sm leading-8 text-zinc-400 sm:text-base">
-          Overfit was created for those who see clothing as identity. We obsess over proportion,
-          structure, and material, creating minimal statement pieces that move seamlessly from day
-          to night. Every collection is intentionally limited, crafted for individuality over noise.
-        </p>
-      </section>
-
-      <section className="mx-auto max-w-6xl border-b border-zinc-800 py-16 sm:py-20">
-        <h2 className="text-3xl font-semibold sm:text-4xl">Testimonials</h2>
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {testimonials.map((item) => (
-            <article key={item.name} className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-              <p className="text-sm leading-7 text-zinc-300">&ldquo;{item.quote}&rdquo;</p>
-              <p className="mt-5 text-sm font-semibold">{item.name}</p>
-              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">{item.role}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-6xl border-b border-zinc-800 py-16 sm:py-20">
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-8 sm:p-10">
-          <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Newsletter</p>
-          <h2 className="mt-4 text-3xl font-semibold sm:text-4xl">Get early access to drops.</h2>
-          <p className="mt-3 max-w-2xl text-sm text-zinc-400">
-            Join the Overfit insiders list for limited releases, styling edits, and private sale windows.
-          </p>
-          <form className="mt-7 flex flex-col gap-3 sm:flex-row">
-            <input
-              type="email"
-              placeholder="Enter your email"
-              className="h-12 flex-1 rounded-full border border-zinc-700 bg-zinc-950 px-5 text-sm outline-none placeholder:text-zinc-500 focus:border-zinc-500"
-            />
-            <button
-              type="submit"
-              className="h-12 rounded-full bg-white px-6 text-sm font-medium text-black transition hover:bg-zinc-200"
+            <Link
+              href="/products?category=Hoodies"
+              className="group relative overflow-hidden rounded-lg bg-gray-200 aspect-square"
             >
-              Subscribe
-            </button>
-          </form>
-        </div>
-      </section>
+              <div className="absolute inset-0 bg-black bg-opacity-40 group-hover:bg-opacity-30 transition-all duration-300" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <h3 className="text-white text-2xl font-bold">Hoodies</h3>
+              </div>
+            </Link>
 
-      <footer className="mx-auto max-w-6xl py-10 text-sm text-zinc-500">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <p>OVERFIT</p>
-          <div className="flex gap-5">
-            <Link href="/products" className="hover:text-zinc-300">
-              Shop
-            </Link>
-            <Link href="/orders/ord_1" className="hover:text-zinc-300">
-              Track Order
-            </Link>
-            <Link href="/admin" className="hover:text-zinc-300">
-              Admin
+            <Link
+              href="/products?category=Outerwear"
+              className="group relative overflow-hidden rounded-lg bg-gray-300 aspect-square"
+            >
+              <div className="absolute inset-0 bg-black bg-opacity-40 group-hover:bg-opacity-30 transition-all duration-300" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <h3 className="text-white text-2xl font-bold">Outerwear</h3>
+              </div>
             </Link>
           </div>
-          <p>© {new Date().getFullYear()} Overfit. All rights reserved.</p>
         </div>
-      </footer>
+      </section>
     </div>
   );
 }
