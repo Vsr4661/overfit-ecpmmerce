@@ -1,9 +1,42 @@
 import Link from "next/link";
+import PrintroveProductCard from "@/components/ProductCard";
 import { ProductCard } from "@/components/store/ProductCard";
+import { getProducts as getPrintroveCatalog } from "@/lib/printrove";
 import { getProducts } from "@/lib/store";
+import type { Product } from "@/types";
+import type { PrintroveProduct } from "@/lib/printrove-products";
+
+export const dynamic = "force-dynamic";
+
+type Featured =
+  | { source: "printrove"; products: PrintroveProduct[]; hasMore: boolean }
+  | { source: "store"; products: Product[]; hasMore: boolean };
+
+async function getFeaturedProducts(): Promise<Featured> {
+  try {
+    const catalog = await getPrintroveCatalog();
+    if (catalog.length > 0) {
+      return {
+        source: "printrove",
+        products: catalog.slice(0, 4),
+        hasMore: catalog.length > 4,
+      };
+    }
+  } catch {
+    /* fall back to local / mock catalog */
+  }
+
+  const all = await getProducts();
+  return {
+    source: "store",
+    products: all.slice(0, 4),
+    hasMore: all.length > 4,
+  };
+}
 
 export default async function HomePage() {
-  const products = await getProducts();
+  const featured = await getFeaturedProducts();
+  const allProductsLink = featured.source === "printrove" ? "/shop" : "/products";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -26,7 +59,7 @@ export default async function HomePage() {
                 Shop Collection
               </Link>
               <Link
-                href="/products"
+                href={allProductsLink}
                 className="border border-gray-300 text-gray-700 px-8 py-3 rounded-md font-medium hover:bg-gray-50 transition-colors"
               >
                 View All Products
@@ -48,11 +81,22 @@ export default async function HomePage() {
             </p>
           </div>
 
-          {products.length > 0 ? (
+          {featured.products.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {products.slice(0, 4).map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
+              {featured.source === "printrove"
+                ? featured.products.map((product) => (
+                    <PrintroveProductCard
+                      key={
+                        product.id?.toString() ??
+                        product.slug ??
+                        `${product.name ?? product.title ?? "product"}`
+                      }
+                      product={product}
+                    />
+                  ))
+                : featured.products.map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
             </div>
           ) : (
             <div className="text-center py-12">
@@ -66,10 +110,10 @@ export default async function HomePage() {
             </div>
           )}
 
-          {products.length > 4 && (
+          {featured.hasMore && (
             <div className="text-center mt-12">
               <Link
-                href="/products"
+                href={allProductsLink}
                 className="inline-flex items-center px-6 py-3 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition-colors"
               >
                 View All Products
