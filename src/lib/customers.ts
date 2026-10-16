@@ -75,3 +75,53 @@ export async function verifyLoginCode(rawEmail: string, code: string): Promise<A
 
   return { id: user.id, email: user.email, name: user.name, role: "CUSTOMER" };
 }
+
+export type CustomerProfile = {
+  email: string;
+  name: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  state: string;
+  postalCode: string;
+};
+
+const PROFILE_FIELDS = ["name", "phone", "addressLine1", "addressLine2", "city", "state", "postalCode"] as const;
+type ProfileField = (typeof PROFILE_FIELDS)[number];
+
+export async function getCustomerProfile(userId: string): Promise<CustomerProfile | null> {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) return null;
+  return {
+    email: user.email,
+    ...(Object.fromEntries(PROFILE_FIELDS.map((field) => [field, user[field] ?? ""])) as Record<ProfileField, string>),
+  };
+}
+
+/** Blank strings are stored as null so "cleared" and "never set" look the same. */
+export async function updateCustomerProfile(userId: string, profile: Record<ProfileField, string>) {
+  await prisma.user.update({
+    where: { id: userId },
+    data: Object.fromEntries(PROFILE_FIELDS.map((field) => [field, profile[field].trim() || null])),
+  });
+}
+
+/**
+ * After a signed-in checkout, remember the name, phone and address for next time, but only
+ * fill fields the customer hasn't set, so a gift order never overwrites their saved address.
+ */
+export async function rememberCheckoutDetails(userId: string, details: Record<ProfileField, string | undefined>) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) return;
+  const hasAddress = Boolean(user.addressLine1);
+  const data: Partial<Record<ProfileField, string>> = {};
+  if (!user.name && details.name) data.name = details.name;
+  if (!user.phone && details.phone) data.phone = details.phone;
+  if (!hasAddress) {
+    for (const field of ["addressLine1", "addressLine2", "city", "state", "postalCode"] as const) {
+      if (details[field]) data[field] = details[field];
+    }
+  }
+  if (Object.keys(data).length > 0) await prisma.user.update({ where: { id: userId }, data });
+}

@@ -17,6 +17,13 @@ model User {
   /// Null for customers, who sign in with an emailed code instead of a password.
   passwordHash String?
   role         String   @default("CUSTOMER") // CUSTOMER | ADMIN
+  /// Customer profile and saved delivery address, used to pre-fill checkout.
+  phone        String?
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
   orders       Order[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

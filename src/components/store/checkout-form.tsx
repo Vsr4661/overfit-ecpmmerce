@@ -8,15 +8,7 @@ import { Lock } from "lucide-react";
 import { useCart } from "@/components/providers/cart-provider";
 import { OrderTotals } from "@/components/store/order-summary";
 import { Button, Field, Input, Price, ProductImage, Select, buttonClasses } from "@/components/ui";
-
-const STATES = [
-  "Andaman and Nicobar Islands", "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chandigarh",
-  "Chhattisgarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Goa", "Gujarat", "Haryana",
-  "Himachal Pradesh", "Jammu and Kashmir", "Jharkhand", "Karnataka", "Kerala", "Ladakh", "Lakshadweep",
-  "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Puducherry",
-  "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand",
-  "West Bengal",
-];
+import { INDIAN_MOBILE, INDIAN_PIN, INDIAN_STATES } from "@/lib/india";
 
 type Form = {
   customerName: string;
@@ -44,12 +36,12 @@ function validate(form: Form) {
   const errors: Partial<Record<keyof Form, string>> = {};
   if (form.customerName.trim().length < 2) errors.customerName = "Enter your full name";
   if (!/^\S+@\S+\.\S+$/.test(form.customerEmail.trim())) errors.customerEmail = "Enter a valid email";
-  if (!/^(\+91[\s-]?)?[6-9]\d{9}$/.test(form.customerPhone.trim()))
+  if (!INDIAN_MOBILE.test(form.customerPhone.trim()))
     errors.customerPhone = "Enter a 10-digit mobile number";
   if (form.addressLine1.trim().length < 5) errors.addressLine1 = "Enter your street address";
   if (form.city.trim().length < 2) errors.city = "Enter your city";
   if (!form.state) errors.state = "Choose your state";
-  if (!/^\d{6}$/.test(form.postalCode.trim())) errors.postalCode = "Enter a 6-digit PIN code";
+  if (!INDIAN_PIN.test(form.postalCode.trim())) errors.postalCode = "Enter a 6-digit PIN code";
   return errors;
 }
 
@@ -69,10 +61,11 @@ declare global {
   }
 }
 
-export function CheckoutForm({ paymentsLive, signedInEmail }: { paymentsLive: boolean; signedInEmail?: string }) {
+/** `saved` pre-fills the form from a signed-in customer's profile. */
+export function CheckoutForm({ paymentsLive, saved }: { paymentsLive: boolean; saved?: Form | null }) {
   const router = useRouter();
   const { items, hydrated, subtotal, clearCart } = useCart();
-  const [form, setForm] = useState<Form>({ ...EMPTY, customerEmail: signedInEmail ?? "" });
+  const [form, setForm] = useState<Form>(saved ?? EMPTY);
   const [touched, setTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -248,7 +241,7 @@ export function CheckoutForm({ paymentsLive, signedInEmail }: { paymentsLive: bo
               <Field label="State" htmlFor="state" error={errors.state} className="sm:col-span-2">
                 <Select autoComplete="address-level1" {...field("state")}>
                   <option value="">Select state</option>
-                  {STATES.map((state) => (
+                  {INDIAN_STATES.map((state) => (
                     <option key={state}>{state}</option>
                   ))}
                 </Select>

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSessionUser } from "@/lib/api-auth";
 import { orderAccessToken } from "@/lib/auth";
+import { rememberCheckoutDetails } from "@/lib/customers";
+import { INDIAN_MOBILE, INDIAN_PIN } from "@/lib/india";
 import { CheckoutError, createPendingOrder, markOrderPaid } from "@/lib/orders";
 import { prisma } from "@/lib/prisma";
 import { createRazorpayOrder, isRazorpayConfigured } from "@/lib/razorpay";
@@ -12,12 +14,12 @@ const checkoutSchema = z.object({
   customerPhone: z
     .string()
     .trim()
-    .regex(/^(\+91[\s-]?)?[6-9]\d{9}$/, "Enter a valid 10-digit Indian mobile number"),
+    .regex(INDIAN_MOBILE, "Enter a valid 10-digit Indian mobile number"),
   addressLine1: z.string().trim().min(5).max(200),
   addressLine2: z.string().trim().max(200).optional(),
   city: z.string().trim().min(2).max(100),
   state: z.string().trim().min(2).max(100),
-  postalCode: z.string().trim().regex(/^\d{6}$/, "Enter a valid 6-digit PIN code"),
+  postalCode: z.string().trim().regex(INDIAN_PIN, "Enter a valid 6-digit PIN code"),
   country: z.literal("India"),
   items: z
     .array(
@@ -50,7 +52,19 @@ export async function POST(request: Request) {
   let order;
   try {
     const user = await getSessionUser();
-    order = await createPendingOrder(input, user?.role === "CUSTOMER" ? user.id : null);
+    const customerId = user?.role === "CUSTOMER" ? user.id : null;
+    order = await createPendingOrder(input, customerId);
+    if (customerId) {
+      await rememberCheckoutDetails(customerId, {
+        name: input.customerName,
+        phone: input.customerPhone,
+        addressLine1: input.addressLine1,
+        addressLine2: input.addressLine2,
+        city: input.city,
+        state: input.state,
+        postalCode: input.postalCode,
+      });
+    }
   } catch (error) {
     if (error instanceof CheckoutError) {
       return NextResponse.json({ message: error.message }, { status: 409 });

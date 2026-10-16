@@ -47,8 +47,10 @@ number and email at `/track`.
 ## Customer accounts
 
 Customers sign in at `/login` with a 6-digit code emailed to them (no passwords). The first sign-in
-creates their account and attaches every earlier guest order placed with that email; `/account`
-lists their orders. Guest checkout still works, and orders placed while signed in are linked
+creates their account and attaches every earlier guest order placed with that email. `/account`
+holds their profile (name, phone, saved delivery address) and `/account/orders` lists their orders.
+Checkout is pre-filled from the profile, and a signed-in customer's first order saves their address
+(it only fills empty fields, so a gift order never overwrites a saved address). Guest checkout still works, and orders placed while signed in are linked
 automatically. Codes expire after 10 minutes, allow 5 wrong guesses, and at most 5 can be requested
 per email per hour. Without `RESEND_API_KEY` the code is printed in the server log. Admin accounts
 can't use code sign-in; they keep the password login at `/admin/login`.
