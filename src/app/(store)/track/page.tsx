@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Button, Field, Input } from "@/components/ui";
 import { orderAccessToken } from "@/lib/auth";
@@ -38,6 +39,13 @@ export default function TrackPage({ searchParams }: { searchParams: { notfound?:
           Find my order
         </Button>
       </form>
+      <p className="mt-10 text-sm text-muted">
+        Ordered more than once?{" "}
+        <Link href="/login" className="text-ink underline underline-offset-4">
+          Sign in
+        </Link>{" "}
+        to see all your orders.
+      </p>
     </div>
   );
 }

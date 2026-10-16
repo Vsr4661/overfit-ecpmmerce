@@ -69,10 +69,10 @@ declare global {
   }
 }
 
-export function CheckoutForm({ paymentsLive }: { paymentsLive: boolean }) {
+export function CheckoutForm({ paymentsLive, signedInEmail }: { paymentsLive: boolean; signedInEmail?: string }) {
   const router = useRouter();
   const { items, hydrated, subtotal, clearCart } = useCart();
-  const [form, setForm] = useState<Form>(EMPTY);
+  const [form, setForm] = useState<Form>({ ...EMPTY, customerEmail: signedInEmail ?? "" });
   const [touched, setTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");

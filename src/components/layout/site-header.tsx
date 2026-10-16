@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Menu, ShoppingBag, X } from "lucide-react";
+import { Menu, ShoppingBag, User, X } from "lucide-react";
 import { useCart } from "@/components/providers/cart-provider";
 import { POLICY } from "@/lib/business";
 import { FREE_SHIPPING_THRESHOLD } from "@/lib/pricing";
@@ -67,18 +67,23 @@ export function SiteHeader({ categories }: { categories: NavCategory[] }) {
             ))}
           </nav>
 
-          <Link href="/cart" className="relative -mr-2 flex items-center gap-2 p-2" aria-label={`Cart, ${itemCount} items`}>
-            <ShoppingBag className="h-5 w-5" />
-            <span
-              className={cn(
-                "absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center bg-accent px-1 text-[10px] font-bold text-white transition-opacity",
-                hydrated && itemCount > 0 ? "opacity-100" : "opacity-0",
-              )}
-              aria-hidden
-            >
-              {itemCount}
-            </span>
-          </Link>
+          <div className="-mr-2 flex items-center">
+            <Link href="/account" className="p-2" aria-label="Your account">
+              <User className="h-5 w-5" />
+            </Link>
+            <Link href="/cart" className="relative flex items-center gap-2 p-2" aria-label={`Cart, ${itemCount} items`}>
+              <ShoppingBag className="h-5 w-5" />
+              <span
+                className={cn(
+                  "absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center bg-accent px-1 text-[10px] font-bold text-white transition-opacity",
+                  hydrated && itemCount > 0 ? "opacity-100" : "opacity-0",
+                )}
+                aria-hidden
+              >
+                {itemCount}
+              </span>
+            </Link>
+          </div>
         </div>
 
         {open && (
@@ -94,6 +99,11 @@ export function SiteHeader({ categories }: { categories: NavCategory[] }) {
                   </Link>
                 </li>
               ))}
+              <li>
+                <Link href="/account" className="display block py-5 text-3xl">
+                  Account
+                </Link>
+              </li>
             </ul>
           </nav>
         )}

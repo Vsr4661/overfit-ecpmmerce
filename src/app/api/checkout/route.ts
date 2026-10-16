@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { getSessionUser } from "@/lib/api-auth";
 import { orderAccessToken } from "@/lib/auth";
 import { CheckoutError, createPendingOrder, markOrderPaid } from "@/lib/orders";
 import { prisma } from "@/lib/prisma";
@@ -48,7 +49,8 @@ export async function POST(request: Request) {
 
   let order;
   try {
-    order = await createPendingOrder(input);
+    const user = await getSessionUser();
+    order = await createPendingOrder(input, user?.role === "CUSTOMER" ? user.id : null);
   } catch (error) {
     if (error instanceof CheckoutError) {
       return NextResponse.json({ message: error.message }, { status: 409 });

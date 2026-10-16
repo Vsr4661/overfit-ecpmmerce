@@ -12,6 +12,8 @@ export type AuthUser = {
 
 export const AUTH_COOKIE_NAME = "overfit_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 8;
+/** Customers stay signed in longer than admins; a stolen customer cookie exposes far less. */
+export const CUSTOMER_SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 const encoder = new TextEncoder();
 
@@ -73,8 +75,8 @@ export async function verifyPayload<T>(token: string | undefined): Promise<T | n
   }
 }
 
-export async function createSessionToken(user: AuthUser) {
-  return signPayload({ ...user, exp: Date.now() + SESSION_TTL_SECONDS * 1000 });
+export async function createSessionToken(user: AuthUser, ttlSeconds = SESSION_TTL_SECONDS) {
+  return signPayload({ ...user, exp: Date.now() + ttlSeconds * 1000 });
 }
 
 export async function verifySessionToken(token: string | undefined): Promise<AuthUser | null> {
@@ -90,6 +92,8 @@ export const sessionCookieOptions = {
   path: "/",
   maxAge: SESSION_TTL_SECONDS,
 };
+
+export const customerSessionCookieOptions = { ...sessionCookieOptions, maxAge: CUSTOMER_SESSION_TTL_SECONDS };
 
 /** Unguessable per-order token so customers can view their order without an account. */
 export async function orderAccessToken(orderId: string) {
