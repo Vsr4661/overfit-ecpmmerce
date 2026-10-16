@@ -29,6 +29,7 @@ charging, so you can try the whole flow locally. Test mode is disabled in produc
 | Orders, payment capture, stock | `src/lib/orders.ts` |
 | Shipping rule and order statuses | `src/lib/pricing.ts` |
 | Sessions and signed order links | `src/lib/auth.ts`, `middleware.ts` |
+| Customer sign-in (emailed code) and accounts | `src/lib/customers.ts`, `src/app/(store)/login`, `src/app/(store)/account` |
 | Razorpay | `src/lib/razorpay.ts`, `src/app/api/checkout/*`, `src/app/api/webhooks/razorpay` |
 | Discount codes | `evaluateDiscount` in `src/lib/pricing.ts`, Admin → Discounts |
 | Order emails | `src/lib/email.ts` (Resend) |
@@ -42,6 +43,17 @@ payment, `POST /api/checkout/verify` checks Razorpay's signature and marks the o
 decrementing stock exactly once. The Razorpay webhook does the same as a backup if the customer
 closes the tab. Customers can view an order only through a signed link, or by entering the order
 number and email at `/track`.
+
+## Customer accounts
+
+Customers sign in at `/login` with a 6-digit code emailed to them (no passwords). The first sign-in
+creates their account and attaches every earlier guest order placed with that email. `/account`
+holds their profile (name, phone, saved delivery address) and `/account/orders` lists their orders.
+Checkout is pre-filled from the profile, and a signed-in customer's first order saves their address
+(it only fills empty fields, so a gift order never overwrites a saved address). Guest checkout still works, and orders placed while signed in are linked
+automatically. Codes expire after 10 minutes, allow 5 wrong guesses, and at most 5 can be requested
+per email per hour. Without `RESEND_API_KEY` the code is printed in the server log. Admin accounts
+can't use code sign-in; they keep the password login at `/admin/login`.
 
 ## Printrove
 

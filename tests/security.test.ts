@@ -41,3 +41,20 @@ describe("session tokens", () => {
     assert.equal(await auth.verifyOrderAccessToken("order_2", token), false);
   });
 });
+
+describe("login codes", async () => {
+  const { checkLoginCode, generateLoginCode, hashLoginCode } = await import("../src/lib/login-code");
+
+  it("generates 6-digit codes", () => {
+    for (let i = 0; i < 50; i++) assert.match(generateLoginCode(), /^\d{6}$/);
+  });
+  it("accepts the right code for the right email only", () => {
+    const hash = hashLoginCode("a@b.co", "123456");
+    assert.equal(checkLoginCode("a@b.co", "123456", hash), true);
+    assert.equal(checkLoginCode("a@b.co", "123457", hash), false);
+    assert.equal(checkLoginCode("x@b.co", "123456", hash), false);
+  });
+  it("never stores the code itself", () => {
+    assert.ok(!hashLoginCode("a@b.co", "123456").includes("123456"));
+  });
+});

@@ -14,8 +14,16 @@ model User {
   id           String   @id @default(cuid())
   email        String   @unique
   name         String?
-  passwordHash String
+  /// Null for customers, who sign in with an emailed code instead of a password.
+  passwordHash String?
   role         String   @default("CUSTOMER") // CUSTOMER | ADMIN
+  /// Customer profile and saved delivery address, used to pre-fill checkout.
+  phone        String?
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
   orders       Order[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -138,4 +146,16 @@ model WebhookEvent {
   id        String   @id
   source    String
   createdAt DateTime @default(now())
+}
+
+/// One-time sign-in codes emailed to customers. Only a hash of the code is stored.
+model LoginCode {
+  id        String   @id @default(cuid())
+  email     String
+  codeHash  String
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt])
 }

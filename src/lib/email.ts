@@ -34,7 +34,7 @@ function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 }
 
-function layout(heading: string, body: string, ctaUrl: string, ctaLabel: string) {
+function layout(heading: string, body: string, ctaUrl?: string, ctaLabel?: string) {
   return `<!doctype html><html><body style="margin:0;background:#f4f2ee;font-family:Helvetica,Arial,sans-serif;color:#111">
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fff">
@@ -42,7 +42,11 @@ function layout(heading: string, body: string, ctaUrl: string, ctaLabel: string)
 <tr><td style="padding:28px">
 <h1 style="margin:0 0 16px;font-size:22px">${heading}</h1>
 ${body}
-<p style="margin:28px 0 0"><a href="${ctaUrl}" style="background:#ff4d1a;color:#fff;text-decoration:none;padding:12px 20px;font-weight:700;font-size:13px;letter-spacing:1px;text-transform:uppercase">${ctaLabel}</a></p>
+${
+    ctaUrl
+      ? `<p style="margin:28px 0 0"><a href="${ctaUrl}" style="background:#ff4d1a;color:#fff;text-decoration:none;padding:12px 20px;font-weight:700;font-size:13px;letter-spacing:1px;text-transform:uppercase">${ctaLabel}</a></p>`
+      : ""
+  }
 </td></tr></table></td></tr></table></body></html>`;
 }
 
@@ -105,6 +109,17 @@ export async function sendOrderShipped(orderId: string) {
   );
   const text = `Order ${order.orderNumber} has shipped. Track it: ${trackingUrl}`;
   await sendEmail({ to: order.customerEmail, subject: `Shipped · ${order.orderNumber}`, html, text });
+}
+
+export async function sendLoginCode(email: string, code: string) {
+  const html = layout(
+    "Your sign-in code",
+    `<p style="margin:0 0 20px;font-size:14px;color:#555">Enter this code on the Overfit sign-in page. It works for 10 minutes.</p>
+<p style="margin:0;font-size:32px;font-weight:800;letter-spacing:8px">${code}</p>
+<p style="margin:20px 0 0;font-size:13px;color:#555">If you didn't ask for this, you can ignore this email.</p>`,
+  );
+  const text = `Your Overfit sign-in code is ${code}. It works for 10 minutes. If you didn't ask for this, ignore this email.`;
+  await sendEmail({ to: email, subject: `${code} is your Overfit sign-in code`, html, text });
 }
 
 /** Fire-and-forget wrapper: email problems must never break checkout or webhooks. */

@@ -37,7 +37,7 @@ export async function applyDiscountCode(code: string, subtotal: number) {
 }
 
 /** Creates a PENDING order, pricing every line from the database (never from the client). */
-export async function createPendingOrder(input: CheckoutInput) {
+export async function createPendingOrder(input: CheckoutInput, userId: string | null = null) {
   const productIds = [...new Set(input.items.map((item) => item.productId))];
   const products = await prisma.product.findMany({
     where: { id: { in: productIds }, isActive: true },
@@ -72,6 +72,7 @@ export async function createPendingOrder(input: CheckoutInput) {
     data: {
       orderNumber: newOrderNumber(),
       status: "PENDING",
+      userId,
       subtotal,
       discountCode,
       discountAmount,
@@ -271,6 +272,20 @@ export async function findOrderForTracking(orderNumber: string, email: string) {
     where: { orderNumber: orderNumber.trim().toUpperCase(), customerEmail: email.trim().toLowerCase() },
     select: { id: true },
   });
+}
+
+/** A signed-in customer's orders: placed while signed in, or as a guest with their (verified) email. */
+export async function listCustomerOrders(user: { id: string; email: string }) {
+  const orders = await prisma.order.findMany({
+    where: {
+      OR: [{ userId: user.id }, { customerEmail: user.email.toLowerCase() }],
+      // Unpaid checkouts are abandoned carts, not orders.
+      status: { not: "PENDING" },
+    },
+    include: orderInclude,
+    orderBy: { createdAt: "desc" },
+  });
+  return orders.map(toOrderView);
 }
 
 export async function listOrders(take = 100) {

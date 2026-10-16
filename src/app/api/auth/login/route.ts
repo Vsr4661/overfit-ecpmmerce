@@ -23,7 +23,8 @@ export async function POST(request: Request) {
   }
 
   const user = await prisma.user.findUnique({ where: { email: credentials.email.toLowerCase() } });
-  const valid = user ? await bcrypt.compare(credentials.password, user.passwordHash) : false;
+  // Customers have no password (they sign in with an emailed code), so they can't use this form.
+  const valid = user?.passwordHash ? await bcrypt.compare(credentials.password, user.passwordHash) : false;
   if (!user || !valid) {
     return NextResponse.json({ message: "Invalid email or password." }, { status: 401 });
   }
