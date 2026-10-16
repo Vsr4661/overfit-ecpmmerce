@@ -91,7 +91,10 @@ function OrderRow({ order, printroveConfigured }: { order: AdminOrderRow; printr
       </td>
       <td className="p-3 text-xs">
         {order.printroveOrderId ? (
-          <span className="text-success">Printrove #{order.printroveOrderId}</span>
+          <div className="space-y-1">
+            <span className="text-success">Printrove #{order.printroveOrderId}</span>
+            {order.fulfilmentError && <p className="max-w-[16rem] text-danger">{order.fulfilmentError}</p>}
+          </div>
         ) : order.fulfilmentError ? (
           <div className="space-y-1">
             <p className="max-w-[16rem] text-danger">{order.fulfilmentError}</p>

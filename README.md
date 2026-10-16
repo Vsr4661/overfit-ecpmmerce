@@ -29,6 +29,8 @@ charging, so you can try the whole flow locally. Test mode is disabled in produc
 | Shipping rule and order statuses | `src/lib/pricing.ts` |
 | Sessions and signed order links | `src/lib/auth.ts`, `middleware.ts` |
 | Razorpay | `src/lib/razorpay.ts`, `src/app/api/checkout/*`, `src/app/api/webhooks/razorpay` |
+| Discount codes | `evaluateDiscount` in `src/lib/pricing.ts`, Admin → Discounts |
+| Order emails | `src/lib/email.ts` (Resend) |
 | Printrove client and catalog sync | `src/lib/printrove.ts`, `src/lib/printrove-sync.ts` |
 | Storefront pages | `src/app/(store)` |
 | Admin | `src/app/admin`, `src/app/api/admin` |
@@ -46,8 +48,26 @@ number and email at `/track`.
 2. Import your Product Library: **Admin → Products → Sync from Printrove**, or `npm run sync:printrove`.
    New products are priced at cost × `PRINTROVE_MARKUP` (rounded up to …99). Re-syncing refreshes
    cost, images and sizes but keeps prices and visibility you've set in admin.
-3. To send paid orders to Printrove automatically, set `PRINTROVE_AUTO_FULFIL=true`. Otherwise use
+3. For automatic Shipped/Delivered updates, add a webhook in Printrove → Settings → Webhooks pointing
+   to `https://<your-domain>/api/webhooks/printrove` (events: `order.shipped`, `order.delivered`,
+   `order.cancelled`, `order.exception`) and set `PRINTROVE_WEBHOOK_SECRET`. Cancellations and
+   delivery exceptions (RTO, lost) are flagged on the order in admin rather than auto-cancelled,
+   since they need a refund or reship decision.
+4. To send paid orders to Printrove automatically, set `PRINTROVE_AUTO_FULFIL=true`. Otherwise use
    **Send to Printrove** on each order in Admin → Orders. Failures are shown there with a retry button.
+
+## Discount codes
+
+Create codes in **Admin → Discounts**: percent (up to 90%) or fixed rupees off, with an optional
+minimum order, usage limit and expiry date. Customers enter them at checkout. The server
+re-validates the code when the order is placed, and a use is counted only once payment succeeds.
+Free shipping is judged on the subtotal after the discount.
+
+## Emails
+
+Set `RESEND_API_KEY` and `EMAIL_FROM` (a sender on a domain verified in [Resend](https://resend.com))
+to email customers when an order is paid and when it ships. Without them, emails are printed to
+the server log instead, so nothing breaks locally.
 
 ## Razorpay
 
@@ -62,6 +82,7 @@ number and email at `/track`.
 | `npm run dev` | Dev server on port 3001 |
 | `npm run build` / `npm start` | Production build / server |
 | `npm run lint` / `npm run typecheck` | ESLint / TypeScript |
+| `npm test` | Unit tests (pricing, discounts, signatures, sessions) |
 | `npm run db:migrate` | Apply schema changes (creates a migration) |
 | `npm run db:seed` | Re-run the seed (admin user; sample products only if the catalog is empty) |
 | `npm run db:studio` | Browse the database |
@@ -72,4 +93,5 @@ number and email at `/track`.
 - Move from SQLite to Postgres (change `provider` in `prisma/schema.prisma`) if you deploy to a
   serverless host. SQLite needs a persistent disk.
 - Set `NODE_ENV=production`, real Razorpay keys and the webhook secret.
-- Send order-confirmation emails (not implemented yet). Customers currently get a link on screen only.
+- Configure Resend so customers actually receive order emails.
+- Set `WHATSAPP_NUMBER` to show the support chat button.

@@ -1,6 +1,6 @@
 import "server-only";
-import { createHmac, timingSafeEqual } from "node:crypto";
 import Razorpay from "razorpay";
+import { verifyHmacSha256Hex } from "@/lib/hmac";
 
 export function isRazorpayConfigured() {
   return Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
@@ -22,21 +22,9 @@ export async function createRazorpayOrder(amountInr: number, receipt: string) {
   });
 }
 
-function safeEqualHex(a: string, b: string) {
-  const left = Buffer.from(a);
-  const right = Buffer.from(b);
-  return left.length === right.length && timingSafeEqual(left, right);
-}
-
 /** Checkout signature: HMAC_SHA256(`${order_id}|${payment_id}`, key_secret). */
 export function verifyCheckoutSignature(razorpayOrderId: string, paymentId: string, signature: string) {
-  const expected = createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
-    .update(`${razorpayOrderId}|${paymentId}`)
-    .digest("hex");
-  return safeEqualHex(signature, expected);
+  return verifyHmacSha256Hex(`${razorpayOrderId}|${paymentId}`, signature, process.env.RAZORPAY_KEY_SECRET!);
 }
 
-export function verifyWebhookSignature(rawBody: string, signature: string, secret: string) {
-  const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
-  return safeEqualHex(signature, expected);
-}
+export { verifyHmacSha256Hex as verifyWebhookSignature };

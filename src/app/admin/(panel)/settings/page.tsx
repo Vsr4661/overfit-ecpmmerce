@@ -1,4 +1,5 @@
 import { AdminHeading } from "@/components/admin/admin-heading";
+import { isEmailConfigured } from "@/lib/email";
 import { Badge } from "@/components/ui";
 import { isPrintroveAutoFulfilEnabled, isPrintroveConfigured } from "@/lib/printrove";
 import { FLAT_SHIPPING_FEE, FREE_SHIPPING_THRESHOLD } from "@/lib/pricing";
@@ -51,6 +52,21 @@ export default function AdminSettingsPage() {
           label="Auto-fulfil with Printrove"
           ok={autoFulfil}
           detail="When on, paid orders are sent to Printrove automatically. Set PRINTROVE_AUTO_FULFIL=true."
+        />
+        <Row
+          label="Printrove status webhook"
+          ok={Boolean(process.env.PRINTROVE_WEBHOOK_SECRET)}
+          detail="Moves orders to Shipped / Delivered automatically. Point Printrove → Settings → Webhooks to /api/webhooks/printrove and set PRINTROVE_WEBHOOK_SECRET."
+        />
+        <Row
+          label="Order emails"
+          ok={isEmailConfigured()}
+          detail={isEmailConfigured() ? `Sending from ${process.env.EMAIL_FROM}.` : "Confirmation and shipped emails are logged, not sent. Set RESEND_API_KEY and EMAIL_FROM."}
+        />
+        <Row
+          label="WhatsApp button"
+          ok={Boolean(process.env.WHATSAPP_NUMBER)}
+          detail="Floating chat button on the storefront. Set WHATSAPP_NUMBER (with country code)."
         />
       </section>
 

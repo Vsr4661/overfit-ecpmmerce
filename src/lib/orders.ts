@@ -2,7 +2,8 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { orderTotals, parseSizes, type OrderStatus } from "@/lib/pricing";
+import { notify, sendOrderConfirmation, sendOrderShipped } from "@/lib/email";
+import { ORDER_STATUSES, evaluateDiscount, normalizeCode, orderTotals, parseSizes, type OrderStatus } from "@/lib/pricing";
 import { submitPrintroveOrder, isPrintroveAutoFulfilEnabled } from "@/lib/printrove";
 import type { Order } from "@/types";
 
@@ -17,6 +18,7 @@ export type CheckoutInput = {
   postalCode: string;
   country: string;
   items: { productId: string; quantity: number; size?: string }[];
+  discountCode?: string;
 };
 
 export class CheckoutError extends Error {}
@@ -24,6 +26,14 @@ export class CheckoutError extends Error {}
 function newOrderNumber() {
   const date = new Date().toISOString().slice(2, 10).replace(/-/g, "");
   return `OVR-${date}-${randomBytes(3).toString("hex").toUpperCase()}`;
+}
+
+/** Looks up a code and returns the discount it gives on this subtotal. */
+export async function applyDiscountCode(code: string, subtotal: number) {
+  const rule = await prisma.discountCode.findUnique({ where: { code: normalizeCode(code) } });
+  if (!rule) return { ok: false as const, reason: "That code doesn't exist." };
+  const result = evaluateDiscount(rule, subtotal);
+  return result.ok ? { ...result, code: rule.code } : result;
 }
 
 /** Creates a PENDING order, pricing every line from the database (never from the client). */
@@ -48,13 +58,23 @@ export async function createPendingOrder(input: CheckoutInput) {
   });
 
   const subtotal = lines.reduce((sum, line) => sum + line.product.price * line.quantity, 0);
-  const { shippingFee, total } = orderTotals(subtotal);
+  let discountCode: string | null = null;
+  let discount = 0;
+  if (input.discountCode) {
+    const applied = await applyDiscountCode(input.discountCode, subtotal);
+    if (!applied.ok) throw new CheckoutError(applied.reason);
+    discountCode = applied.code;
+    discount = applied.amount;
+  }
+  const { discountAmount, shippingFee, total } = orderTotals(subtotal, discount);
 
   return prisma.order.create({
     data: {
       orderNumber: newOrderNumber(),
       status: "PENDING",
       subtotal,
+      discountCode,
+      discountAmount,
       shippingFee,
       total,
       customerName: input.customerName,
@@ -92,6 +112,11 @@ export async function markOrderPaid(orderId: string, razorpayPaymentId: string |
       data: { status: "PAID", paidAt: new Date(), razorpayPaymentId },
     });
     if (count === 0) return false;
+    const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, select: { discountCode: true } });
+    if (order.discountCode) {
+      // updateMany: a code deleted mid-checkout must not block recording the payment.
+      await tx.discountCode.updateMany({ where: { code: order.discountCode }, data: { usedCount: { increment: 1 } } });
+    }
     const items = await tx.orderItem.findMany({ where: { orderId } });
     for (const item of items) {
       await tx.product.update({
@@ -102,10 +127,41 @@ export async function markOrderPaid(orderId: string, razorpayPaymentId: string |
     return true;
   });
 
-  if (transitioned && isPrintroveAutoFulfilEnabled()) {
-    await fulfilWithPrintrove(orderId);
+  if (transitioned) {
+    notify(() => sendOrderConfirmation(orderId), `confirmation for ${orderId}`);
+    if (isPrintroveAutoFulfilEnabled()) await fulfilWithPrintrove(orderId);
   }
   return transitioned;
+}
+
+const STATUS_RANK = Object.fromEntries(ORDER_STATUSES.map((status, index) => [status, index]));
+
+/**
+ * Changes a paid order's status, stamping shipped/delivered dates and emailing the customer
+ * when it ships. With `forwardOnly`, never moves an order backwards (used for webhooks, which
+ * can arrive out of order).
+ */
+export async function setOrderStatus(orderId: string, status: OrderStatus, options: { forwardOnly?: boolean } = {}) {
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order) return null;
+  if (order.status === status) return order;
+  if (options.forwardOnly && (order.status === "CANCELLED" || STATUS_RANK[status] < STATUS_RANK[order.status])) {
+    return order;
+  }
+
+  const now = new Date();
+  const updated = await prisma.order.update({
+    where: { id: orderId },
+    data: {
+      status,
+      ...(status === "SHIPPED" && !order.shippedAt ? { shippedAt: now } : {}),
+      ...(status === "DELIVERED" ? { deliveredAt: order.deliveredAt ?? now, shippedAt: order.shippedAt ?? now } : {}),
+    },
+  });
+  if (status === "SHIPPED" && !order.shippedAt) {
+    notify(() => sendOrderShipped(orderId), `shipped email for ${orderId}`);
+  }
+  return updated;
 }
 
 type StoredVariant = { id: number; size?: string };
@@ -186,6 +242,8 @@ export function toOrderView(order: OrderRow): Order {
       .filter(Boolean)
       .join(", "),
     subtotal: order.subtotal,
+    discountCode: order.discountCode,
+    discountAmount: order.discountAmount,
     shippingFee: order.shippingFee,
     total: order.total,
     createdAt: order.createdAt.toISOString(),

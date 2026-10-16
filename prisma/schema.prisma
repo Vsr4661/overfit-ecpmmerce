@@ -66,6 +66,8 @@ model Order {
   /// PENDING | PAID | PACKED | SHIPPED | DELIVERED | CANCELLED
   status            String      @default("PENDING")
   subtotal          Float
+  discountCode      String?
+  discountAmount    Float       @default(0)
   shippingFee       Float
   total             Float
   customerName      String
@@ -82,6 +84,8 @@ model Order {
   printroveOrderId  String?
   fulfilmentError   String?
   paidAt            DateTime?
+  shippedAt         DateTime?
+  deliveredAt       DateTime?
   items             OrderItem[]
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
@@ -107,4 +111,28 @@ model OrderItem {
 
   @@index([orderId])
   @@index([productId])
+}
+
+model DiscountCode {
+  id          String    @id @default(cuid())
+  /// Stored uppercase; matched case-insensitively by uppercasing input.
+  code        String    @unique
+  /// PERCENT | FIXED
+  type        String
+  /// Percent (1-90) for PERCENT, rupees for FIXED.
+  value       Float
+  minSubtotal Float     @default(0)
+  maxUses     Int?
+  usedCount   Int       @default(0)
+  expiresAt   DateTime?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+/// Webhook deliveries already handled (providers retry; dedupe on their event id).
+model WebhookEvent {
+  id        String   @id
+  source    String
+  createdAt DateTime @default(now())
 }

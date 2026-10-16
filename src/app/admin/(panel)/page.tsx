@@ -20,7 +20,7 @@ export default async function AdminDashboardPage() {
     prisma.order.count({ where: { status: { in: ["PAID", "PACKED"] } } }),
     prisma.product.count({ where: { isActive: true } }),
     prisma.product.count({ where: { isActive: true, inventory: { lte: 5 } } }),
-    prisma.order.count({ where: { fulfilmentError: { not: null }, printroveOrderId: null } }),
+    prisma.order.count({ where: { fulfilmentError: { not: null }, status: { not: "CANCELLED" } } }),
     listOrders(8),
   ]);
 
@@ -51,7 +51,7 @@ export default async function AdminDashboardPage() {
         <div className="space-y-2">
           {failedFulfilment > 0 && (
             <Link href="/admin/orders" className="block border border-danger bg-danger/5 p-3 text-sm text-danger">
-              {failedFulfilment} paid {failedFulfilment === 1 ? "order" : "orders"} failed to send to Printrove. Review →
+              {failedFulfilment} paid {failedFulfilment === 1 ? "order" : "orders"} need attention (Printrove error or delivery exception). Review →
             </Link>
           )}
           {lowStock > 0 && (

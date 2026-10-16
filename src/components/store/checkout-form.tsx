@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Script from "next/script";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Lock } from "lucide-react";
 import { useCart } from "@/components/providers/cart-provider";
 import { OrderTotals } from "@/components/store/order-summary";
@@ -76,6 +76,10 @@ export function CheckoutForm({ paymentsLive }: { paymentsLive: boolean }) {
   const [touched, setTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [codeInput, setCodeInput] = useState("");
+  const [discount, setDiscount] = useState<{ code: string; amount: number } | null>(null);
+  const [codeError, setCodeError] = useState("");
+  const [applying, setApplying] = useState(false);
 
   const errors = touched ? validate(form) : {};
 
@@ -87,6 +91,35 @@ export function CheckoutForm({ paymentsLive }: { paymentsLive: boolean }) {
     onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       setForm((current) => ({ ...current, [name]: event.target.value })),
   });
+
+  const applyCode = async (code = codeInput) => {
+    if (!code.trim()) return;
+    setApplying(true);
+    setCodeError("");
+    try {
+      const response = await fetch("/api/discounts/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, subtotal }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message ?? "Code not valid");
+      setDiscount({ code: data.code, amount: data.amount });
+      setCodeInput("");
+    } catch (caught) {
+      setDiscount(null);
+      setCodeError((caught as Error).message);
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  // Percent codes and minimum-spend rules depend on the subtotal, so re-check when it changes.
+  const appliedCode = discount?.code;
+  useEffect(() => {
+    if (appliedCode) applyCode(appliedCode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subtotal]);
 
   const finish = (trackingUrl: string) => {
     clearCart();
@@ -110,6 +143,7 @@ export function CheckoutForm({ paymentsLive }: { paymentsLive: boolean }) {
         body: JSON.stringify({
           ...form,
           country: "India",
+          discountCode: discount?.code,
           items: items.map((item) => ({ productId: item.productId, quantity: item.quantity, size: item.size })),
         }),
       });
@@ -243,7 +277,43 @@ export function CheckoutForm({ paymentsLive }: { paymentsLive: boolean }) {
               </li>
             ))}
           </ul>
-          <OrderTotals subtotal={subtotal} />
+          {discount ? (
+            <div className="flex items-center justify-between border border-dashed border-success bg-success/5 px-3 py-2 text-sm">
+              <span>
+                <span className="font-mono font-semibold">{discount.code}</span> applied
+              </span>
+              <button type="button" className="text-xs text-muted underline" onClick={() => setDiscount(null)}>
+                Remove
+              </button>
+            </div>
+          ) : (
+            <div>
+              <div className="flex gap-2">
+                <Input
+                  aria-label="Discount code"
+                  placeholder="Discount code"
+                  value={codeInput}
+                  onChange={(event) => setCodeInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      applyCode();
+                    }
+                  }}
+                  className="uppercase placeholder:normal-case"
+                />
+                <Button variant="secondary" onClick={() => applyCode()} disabled={applying || !codeInput.trim()}>
+                  Apply
+                </Button>
+              </div>
+              {codeError && (
+                <p className="mt-1.5 text-xs text-danger" role="alert">
+                  {codeError}
+                </p>
+              )}
+            </div>
+          )}
+          <OrderTotals subtotal={subtotal} discount={discount ?? undefined} />
 
           {error && (
             <p className="border border-danger bg-danger/5 p-3 text-sm text-danger" role="alert">

@@ -28,6 +28,7 @@ const checkoutSchema = z.object({
     )
     .min(1)
     .max(30),
+  discountCode: z.string().trim().max(40).optional(),
 });
 
 export async function POST(request: Request) {

@@ -50,6 +50,8 @@ export type Order = {
   customerPhone: string;
   shippingAddress: string;
   subtotal: number;
+  discountCode: string | null;
+  discountAmount: number;
   shippingFee: number;
   total: number;
   createdAt: string;

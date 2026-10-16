@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/api-auth";
 import { ORDER_STATUSES } from "@/lib/pricing";
+import { setOrderStatus } from "@/lib/orders";
 import { prisma } from "@/lib/prisma";
 
 const schema = z.object({ status: z.enum(ORDER_STATUSES) });
@@ -26,6 +27,6 @@ export async function PATCH(request: NextRequest, { params }: { params: { orderI
     );
   }
 
-  const updated = await prisma.order.update({ where: { id: order.id }, data: { status } });
-  return NextResponse.json({ order: { id: updated.id, status: updated.status } });
+  const updated = await setOrderStatus(order.id, status);
+  return NextResponse.json({ order: { id: order.id, status: updated?.status ?? status } });
 }

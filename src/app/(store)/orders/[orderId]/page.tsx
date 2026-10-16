@@ -101,6 +101,12 @@ export default async function OrderPage({
             <dt className="text-muted">Subtotal</dt>
             <dd><Price amount={order.subtotal} /></dd>
           </div>
+          {order.discountAmount > 0 && (
+            <div className="flex justify-between text-success">
+              <dt>Discount ({order.discountCode})</dt>
+              <dd>−<Price amount={order.discountAmount} /></dd>
+            </div>
+          )}
           <div className="flex justify-between">
             <dt className="text-muted">Shipping</dt>
             <dd>{order.shippingFee === 0 ? "Free" : <Price amount={order.shippingFee} />}</dd>

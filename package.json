@@ -13,7 +13,8 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "sync:printrove": "tsx --env-file=.env scripts/sync-printrove.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.0.0",

@@ -2,9 +2,9 @@ import { Price } from "@/components/ui";
 import { FREE_SHIPPING_THRESHOLD, orderTotals } from "@/lib/pricing";
 import { formatCurrency } from "@/lib/utils";
 
-export function OrderTotals({ subtotal }: { subtotal: number }) {
-  const { shippingFee, total } = orderTotals(subtotal);
-  const remaining = FREE_SHIPPING_THRESHOLD - subtotal;
+export function OrderTotals({ subtotal, discount }: { subtotal: number; discount?: { code: string; amount: number } }) {
+  const { discountAmount, shippingFee, total } = orderTotals(subtotal, discount?.amount ?? 0);
+  const remaining = FREE_SHIPPING_THRESHOLD - (subtotal - discountAmount);
 
   return (
     <div className="space-y-4">
@@ -14,7 +14,7 @@ export function OrderTotals({ subtotal }: { subtotal: number }) {
             Add <strong>{formatCurrency(remaining)}</strong> more for free shipping
           </p>
           <div className="h-1 bg-line" aria-hidden>
-            <div className="h-full bg-accent" style={{ width: `${Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100)}%` }} />
+            <div className="h-full bg-accent" style={{ width: `${Math.min(100, ((subtotal - discountAmount) / FREE_SHIPPING_THRESHOLD) * 100)}%` }} />
           </div>
         </div>
       )}
@@ -25,6 +25,12 @@ export function OrderTotals({ subtotal }: { subtotal: number }) {
             <Price amount={subtotal} />
           </dd>
         </div>
+        {discount && discountAmount > 0 && (
+          <div className="flex justify-between text-success">
+            <dt>Discount ({discount.code})</dt>
+            <dd className="tabular-nums">−{formatCurrency(discountAmount)}</dd>
+          </div>
+        )}
         <div className="flex justify-between">
           <dt className="text-muted">Shipping</dt>
           <dd>{shippingFee === 0 ? "Free" : <Price amount={shippingFee} />}</dd>
