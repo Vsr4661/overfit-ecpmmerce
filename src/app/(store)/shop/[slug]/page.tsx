@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { POLICY } from "@/lib/business";
 import { notFound } from "next/navigation";
 import { ProductGallery } from "@/components/store/product-gallery";
 import { ProductGrid } from "@/components/store/product-card";
@@ -117,8 +118,14 @@ export default async function ProductPage({ params }: Params) {
                   Free shipping over {formatCurrency(FREE_SHIPPING_THRESHOLD)}, otherwise{" "}
                   {formatCurrency(FLAT_SHIPPING_FEE)}.
                 </li>
-                <li>Printed to order and delivered in 3–6 business days across India.</li>
-                <li>Exchanges within 7 days of delivery.</li>
+                <li>
+                  Printed and dispatched in {POLICY.dispatchDays} business days, then {POLICY.deliveryDays} days for
+                  delivery across India. <Link href="/shipping" className="underline underline-offset-4">Shipping policy</Link>
+                </li>
+                <li>
+                  Size exchanges within {POLICY.exchangeWindowDays} days of delivery.{" "}
+                  <Link href="/refunds" className="underline underline-offset-4">Refunds &amp; exchanges</Link>
+                </li>
               </ul>
             </details>
           </div>

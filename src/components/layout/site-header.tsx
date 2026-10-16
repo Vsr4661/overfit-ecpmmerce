@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Menu, ShoppingBag, X } from "lucide-react";
 import { useCart } from "@/components/providers/cart-provider";
+import { POLICY } from "@/lib/business";
 import { FREE_SHIPPING_THRESHOLD } from "@/lib/pricing";
 import { cn, formatCurrency } from "@/lib/utils";
 
@@ -34,7 +35,7 @@ export function SiteHeader({ categories }: { categories: NavCategory[] }) {
   return (
     <>
       <div className="bg-ink py-2 text-center text-[11px] font-semibold uppercase tracking-label text-white">
-        Free shipping over {formatCurrency(FREE_SHIPPING_THRESHOLD)} · 7-day exchanges
+        Free shipping over {formatCurrency(FREE_SHIPPING_THRESHOLD)} · {POLICY.exchangeWindowDays}-day size exchanges
       </div>
       <header className="sticky top-0 z-40 border-b border-line bg-paper/90 backdrop-blur">
         <div className="page flex h-16 items-center justify-between gap-4">

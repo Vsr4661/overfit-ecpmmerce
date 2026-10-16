@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: { default: "Overfit — Oversized streetwear", template: "%s · Overfit" },
   description:
-    "Heavyweight tees, hoodies and outerwear cut oversized. Designed in India, printed on demand, shipped in 3–6 days.",
+    "Heavyweight tees, hoodies and outerwear cut oversized. Designed in India, printed on demand, shipped across India.",
   openGraph: { siteName: "Overfit", type: "website", locale: "en_IN" },
   icons: { icon: "/overfit.svg" },
 };

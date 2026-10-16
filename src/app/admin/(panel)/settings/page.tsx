@@ -1,4 +1,5 @@
 import { AdminHeading } from "@/components/admin/admin-heading";
+import { missingBusinessDetails } from "@/lib/business";
 import { isEmailConfigured } from "@/lib/email";
 import { Badge } from "@/components/ui";
 import { isPrintroveAutoFulfilEnabled, isPrintroveConfigured } from "@/lib/printrove";
@@ -68,6 +69,28 @@ export default function AdminSettingsPage() {
           ok={Boolean(process.env.WHATSAPP_NUMBER)}
           detail="Floating chat button on the storefront. Set WHATSAPP_NUMBER (with country code)."
         />
+      </section>
+
+      <section className="mt-8 bg-surface p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="font-medium">Business details for legal pages</p>
+            <p className="mt-1 text-sm text-muted">
+              Shown on Privacy, Terms, Refunds, Shipping and Contact. Razorpay checks these before activating live
+              payments. Edit <code>src/lib/business.ts</code>.
+            </p>
+          </div>
+          <Badge tone={missingBusinessDetails().length === 0 ? "success" : "danger"}>
+            {missingBusinessDetails().length === 0 ? "Complete" : `${missingBusinessDetails().length} missing`}
+          </Badge>
+        </div>
+        {missingBusinessDetails().length > 0 && (
+          <ul className="mt-3 list-disc pl-5 text-sm text-danger">
+            {missingBusinessDetails().map((item) => (
+              <li key={item.field}>{item.label}</li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="mt-8 bg-surface p-4">
