@@ -1,4 +1,7 @@
-import dns from "node:dns";
+/**
+ * Printrove API client (server-only). Never expose PRINTROVE_TOKEN to the browser.
+ * Docs: https://api.printrove.com/docs/
+ */
 import {
   normalizePrintroveLibraryDetail,
   normalizePrintroveProducts,
@@ -7,25 +10,20 @@ import {
 
 export type { PrintroveProduct };
 
-// Prefer IPv4 when IPv6 routes/DNS are broken (common cause of undici "fetch failed" + EAI_AGAIN).
-dns.setDefaultResultOrder("ipv4first");
-
-/**
- * Printrove API helper library.
- *
- * This file is server-only and should only be imported by backend routes.
- * Never expose PRINTROVE_TOKEN to the client.
- */
 const PRINTROVE_BASE_URL = "https://api.printrove.com/api/external";
 
 function getPrintroveToken(): string | undefined {
   const raw = process.env.PRINTROVE_TOKEN;
   if (!raw) return undefined;
-  return raw.trim().replace(/^["']+|["']+$/g, "");
+  return raw.trim().replace(/^["']+|["']+$/g, "") || undefined;
 }
 
-if (!getPrintroveToken()) {
-  console.error("Missing PRINTROVE_TOKEN environment variable. Add it to .env.local.");
+export function isPrintroveConfigured() {
+  return Boolean(getPrintroveToken());
+}
+
+export function isPrintroveAutoFulfilEnabled() {
+  return isPrintroveConfigured() && process.env.PRINTROVE_AUTO_FULFIL === "true";
 }
 
 export interface PrintroveCategory {
@@ -34,127 +32,68 @@ export interface PrintroveCategory {
   description?: string;
 }
 
-export interface PrintroveOrderItem {
-  productId: string;
-  quantity: number;
-  size?: string;
-  color?: string;
-}
-
-export interface PrintroveOrderPayload {
-  customer_name: string;
-  customer_email: string;
-  customer_phone: string;
-  shipping_address: string;
-  shipping_city: string;
-  shipping_state: string;
-  shipping_zip: string;
-  shipping_country: string;
-  items: PrintroveOrderItem[];
-  notes?: string;
-}
-
-export interface PrintroveOrderResponse {
-  orderId: string;
-  status: string;
-  message?: string;
-  data?: Record<string, unknown>;
-}
-
 function formatFetchError(err: unknown): string {
   if (!(err instanceof Error)) return String(err);
-  const anyErr = err as Error & {
-    cause?: NodeJS.ErrnoException & { hostname?: string };
-  };
-  const c = anyErr.cause;
-  if (c && typeof c === "object") {
-    const code = c.code ?? "";
-    const syscall = c.syscall ?? "";
-    const host = c.hostname ?? "";
-    const parts = [syscall, code, host].filter(Boolean);
-    if (parts.length) return `${anyErr.message} (${parts.join(" ")})`;
+  const cause = (err as Error & { cause?: NodeJS.ErrnoException & { hostname?: string } }).cause;
+  if (cause && typeof cause === "object") {
+    const parts = [cause.syscall, cause.code, cause.hostname].filter(Boolean);
+    if (parts.length) return `${err.message} (${parts.join(" ")})`;
   }
-  return anyErr.message;
+  return err.message;
 }
 
 async function printroveFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getPrintroveToken();
-  if (!token) {
-    throw new Error("Printrove token is not configured. Set PRINTROVE_TOKEN in .env.local.");
-  }
-
-  const url = `${PRINTROVE_BASE_URL}${path}`;
-  const headers: HeadersInit = {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-    ...init.headers,
-  };
-
-  console.log(`[Printrove] Request: ${init.method ?? "GET"} ${url}`);
+  if (!token) throw new Error("PRINTROVE_TOKEN is not set.");
 
   let response: Response;
   try {
-    response = await fetch(url, {
+    response = await fetch(`${PRINTROVE_BASE_URL}${path}`, {
       ...init,
-      headers,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...init.headers,
+      },
       cache: "no-store",
+      signal: AbortSignal.timeout(20_000),
     });
   } catch (err) {
-    const detail = formatFetchError(err);
-    console.error("[Printrove] fetch failed:", detail);
-    throw new Error(
-      `Cannot reach Printrove API (${detail}). Check internet, DNS, VPN, and firewall. ` +
-        "If you use WSL or Docker, fix DNS (e.g. /etc/resolv.conf) or try another network."
-    );
+    throw new Error(`Cannot reach Printrove API: ${formatFetchError(err)}`);
   }
 
   const text = await response.text();
   let body: unknown = null;
-
   if (text) {
     try {
       body = JSON.parse(text);
-    } catch (parseError) {
-      console.warn("[Printrove] Response is not valid JSON", parseError, text);
+    } catch {
       body = text;
     }
   }
 
   if (!response.ok) {
-    console.error("[Printrove] Error response:", response.status, body);
-    throw new Error(
-      typeof body === "object" && body !== null && "message" in body
-        ? (body as any).message
-        : `Printrove request failed with status ${response.status}`
-    );
+    const message =
+      body && typeof body === "object" && "message" in body
+        ? String((body as { message: unknown }).message)
+        : `Printrove request failed with status ${response.status}`;
+    throw new Error(message);
   }
-
   return body as T;
 }
 
-/**
- * Fetch Printrove categories.
- */
 export async function getCategories(): Promise<PrintroveCategory[]> {
   const raw = await printroveFetch<unknown>("/categories");
-  if (Array.isArray(raw)) {
-    return (raw as { id: unknown; name: unknown; description?: string }[]).map((c) => ({
-      id: String(c.id),
-      name: String(c.name),
-      description: c.description,
-    }));
-  }
-  if (raw && typeof raw === "object" && "categories" in raw) {
-    const arr = (raw as { categories: unknown }).categories;
-    if (Array.isArray(arr)) {
-      return arr.map((c) => ({
-        id: String((c as { id: unknown }).id),
-        name: String((c as { name: unknown }).name),
-        description: (c as { description?: string }).description,
-      }));
-    }
-  }
-  return [];
+  const list = Array.isArray(raw)
+    ? raw
+    : raw && typeof raw === "object" && Array.isArray((raw as { categories?: unknown }).categories)
+      ? (raw as { categories: unknown[] }).categories
+      : [];
+  return list.map((c) => {
+    const row = c as { id: unknown; name: unknown; description?: string };
+    return { id: String(row.id), name: String(row.name), description: row.description };
+  });
 }
 
 type CatalogVariantPrice = { id: number; base_price?: number; gst?: number };
@@ -288,59 +227,88 @@ export async function enrichPrintroveRetailPrices(products: PrintroveProduct[]):
   }
 }
 
-/**
- * Fetch Printrove products.
- * Supports optional query params like search or category filters.
- */
-export async function getProducts(
-  params?: Record<string, string | number | boolean>
-): Promise<PrintroveProduct[]> {
-  const defaults: Record<string, string> = { page: "1", per_page: "20" };
-  const merged: Record<string, string> = { ...defaults };
-  if (params) {
-    for (const [key, value] of Object.entries(params)) {
-      if (value === undefined || value === "") continue;
-      merged[key] = String(value);
-    }
-  }
-  const query = `?${new URLSearchParams(merged).toString()}`;
+const PAGE_SIZE = 20;
 
-  const raw = await printroveFetch<unknown>(`/products${query}`);
-  const products = normalizePrintroveProducts(raw);
-  await enrichPrintroveRetailPrices(products);
-  return products;
+/** Every product in the merchant's Printrove Product Library, with cost prices. */
+export async function listLibraryProducts(): Promise<PrintroveProduct[]> {
+  const all: PrintroveProduct[] = [];
+  for (let page = 1; page <= 50; page++) {
+    const raw = await printroveFetch<unknown>(`/products?page=${page}&per_page=${PAGE_SIZE}`);
+    const batch = normalizePrintroveProducts(raw);
+    all.push(...batch);
+    if (batch.length < PAGE_SIZE) break;
+  }
+  await enrichPrintroveRetailPrices(all);
+  return all;
 }
 
-/**
- * One library product with mockups, design URLs, variant meta, and enriched price.
- */
-export async function getPrintroveLibraryProduct(
-  libraryId: string | number
-): Promise<PrintroveProduct | null> {
-  const raw = await printroveFetch<unknown>(
-    `/products/${encodeURIComponent(String(libraryId))}`
+export type PrintroveLibraryVariant = { id: number; size?: string; color?: string; sku?: string };
+
+/** Full library product (mockups, design) plus every variant (one per size/colour). */
+export async function getLibraryProductDetail(libraryId: string | number) {
+  const raw = await printroveFetch<{ product?: { variants?: unknown[] } }>(
+    `/products/${encodeURIComponent(String(libraryId))}`,
   );
   const product = normalizePrintroveLibraryDetail(raw);
-  if (!product) return null;
-  await enrichPrintroveRetailPrices([product]);
-  return product;
-}
-
-/**
- * Create a Printrove order.
- */
-export async function createOrder(
-  payload: PrintroveOrderPayload
-): Promise<PrintroveOrderResponse> {
-  return await printroveFetch<PrintroveOrderResponse>("/orders", {
-    method: "POST",
-    body: JSON.stringify(payload),
+  const variants: PrintroveLibraryVariant[] = (raw?.product?.variants ?? []).flatMap((row) => {
+    const v = row as { id?: unknown; sku?: unknown; product?: { size?: unknown; color?: unknown } };
+    if (v.id == null) return [];
+    return [
+      {
+        id: Number(v.id),
+        sku: typeof v.sku === "string" ? v.sku : undefined,
+        size: typeof v.product?.size === "string" ? v.product.size : undefined,
+        color: typeof v.product?.color === "string" ? v.product.color : undefined,
+      },
+    ];
   });
+  return { product, variants };
 }
 
-/**
- * Fetch a single Printrove order by ID.
- */
-export async function getOrderById(orderId: string): Promise<PrintroveOrderResponse> {
-  return await printroveFetch<PrintroveOrderResponse>(`/orders/${encodeURIComponent(orderId)}`);
+export type PrintroveOrderInput = {
+  reference: string;
+  retailPrice: number;
+  customer: {
+    name: string;
+    phone: string;
+    address1: string;
+    address2?: string;
+    city: string;
+    state: string;
+    pincode: string;
+    country: string;
+  };
+  lines: { variantId: number; quantity: number }[];
+};
+
+/** Places a prepaid order for saved library products. Returns Printrove's order id. */
+export async function submitPrintroveOrder(input: PrintroveOrderInput) {
+  // The API rejects unknown fields, so only send documented ones.
+  const customer: Record<string, string> = {
+    name: input.customer.name,
+    number: input.customer.phone.replace(/\D/g, "").slice(-10),
+    address1: input.customer.address1,
+    city: input.customer.city,
+    state: input.customer.state,
+    pincode: input.customer.pincode,
+    country: input.customer.country,
+  };
+  if (input.customer.address2) customer.address2 = input.customer.address2;
+
+  const result = await printroveFetch<{ id?: unknown; order?: { id?: unknown } }>("/orders", {
+    method: "POST",
+    body: JSON.stringify({
+      reference_number: input.reference,
+      retail_price: input.retailPrice,
+      cod: false,
+      customer,
+      order_products: input.lines.map((line) => ({
+        variant_id: line.variantId,
+        quantity: line.quantity,
+      })),
+    }),
+  });
+  const id = result?.id ?? result?.order?.id;
+  if (id == null) throw new Error("Printrove did not return an order id.");
+  return { id: String(id) };
 }

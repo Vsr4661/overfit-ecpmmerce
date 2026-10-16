@@ -1,55 +1,40 @@
+import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createAuthToken, getAuthCookieName } from "@/lib/auth";
-import { getUserStore } from "@/lib/api-data";
+import { AUTH_COOKIE_NAME, createSessionToken, sessionCookieOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
+  email: z.string().trim().email(),
+  password: z.string().min(1).max(200),
 });
 
 export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const { email, password } = schema.parse(body);
-    const user = getUserStore().find(
-      (entry) => entry.email.toLowerCase() === email.toLowerCase() && entry.password === password,
-    );
-
-    if (!user) {
-      return NextResponse.json({ message: "Invalid credentials" }, { status: 401 });
-    }
-
-    const token = createAuthToken({
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-    });
-
-    const response = NextResponse.json({
-      message: "Logged in",
-      user: { id: user.id, email: user.email, name: user.name, role: user.role },
-    });
-
-    response.cookies.set(getAuthCookieName(), token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24,
-    });
-    if (user.role === "ADMIN") {
-      response.cookies.set("overfit_admin_session", "true", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: 60 * 60 * 8,
-      });
-    }
-    return response;
-  } catch {
-    return NextResponse.json({ message: "Invalid request body" }, { status: 400 });
+  if (!rateLimit(`login:${clientIp(request)}`, 10, 15 * 60 * 1000)) {
+    return NextResponse.json({ message: "Too many attempts. Try again in 15 minutes." }, { status: 429 });
   }
+
+  let credentials: z.infer<typeof schema>;
+  try {
+    credentials = schema.parse(await request.json());
+  } catch {
+    return NextResponse.json({ message: "Enter your email and password." }, { status: 400 });
+  }
+
+  const user = await prisma.user.findUnique({ where: { email: credentials.email.toLowerCase() } });
+  const valid = user ? await bcrypt.compare(credentials.password, user.passwordHash) : false;
+  if (!user || !valid) {
+    return NextResponse.json({ message: "Invalid email or password." }, { status: 401 });
+  }
+
+  const sessionUser = {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role === "ADMIN" ? ("ADMIN" as const) : ("CUSTOMER" as const),
+  };
+  const response = NextResponse.json({ user: sessionUser });
+  response.cookies.set(AUTH_COOKIE_NAME, await createSessionToken(sessionUser), sessionCookieOptions);
+  return response;
 }

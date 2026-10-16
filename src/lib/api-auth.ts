@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthCookieName, verifyAuthToken, type AuthUser } from "@/lib/auth";
+import { cookies } from "next/headers";
+import { AUTH_COOKIE_NAME, verifySessionToken, type AuthUser } from "@/lib/auth";
 
-export function getRequestUser(request: NextRequest): AuthUser | null {
-  const token = request.cookies.get(getAuthCookieName())?.value;
-  if (!token) return null;
-  return verifyAuthToken(token);
+export async function getRequestUser(request: NextRequest): Promise<AuthUser | null> {
+  return verifySessionToken(request.cookies.get(AUTH_COOKIE_NAME)?.value);
 }
 
-export function unauthorizedResponse() {
-  return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+/** For server components: the signed-in user from the session cookie. */
+export async function getSessionUser(): Promise<AuthUser | null> {
+  return verifySessionToken(cookies().get(AUTH_COOKIE_NAME)?.value);
 }
 
-export function forbiddenResponse() {
-  return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+/** Returns an error response unless the request comes from an admin. */
+export async function requireAdmin(request: NextRequest): Promise<NextResponse | null> {
+  const user = await getRequestUser(request);
+  if (!user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  if (user.role !== "ADMIN") return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+  return null;
 }

@@ -4,18 +4,18 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  password  String
-  role      String   @default("CUSTOMER")
-  orders    Order[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  role         String   @default("CUSTOMER") // CUSTOMER | ADMIN
+  orders       Order[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Category {
@@ -29,21 +29,33 @@ model Category {
 }
 
 model Product {
-  id          String      @id @default(cuid())
-  name        String
-  slug        String      @unique
-  description String
-  price       Float
-  imageUrl    String
-  inventory   Int         @default(0)
-  isActive    Boolean     @default(true)
-  categoryId  String
-  category    Category    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  orderItems  OrderItem[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id           String      @id @default(cuid())
+  name         String
+  slug         String      @unique
+  description  String
+  /// Selling price in INR, set by the store (admin-editable).
+  price        Float
+  /// Fulfilment cost in INR (Printrove base price incl. GST). Null for non-Printrove products.
+  costPrice    Float?
+  imageUrl     String
+  imageBackUrl String?
+  /// Comma-separated sizes offered, e.g. "S,M,L,XL". Empty = one size.
+  sizes        String      @default("")
+  color        String?
+  inventory    Int         @default(0)
+  isActive     Boolean     @default(true)
+  /// Printrove library product id; set for products synced from Printrove.
+  printroveId  String?     @unique
+  /// JSON array of Printrove library variants: [{ "id": 123, "size": "M", "sku": "..." }]
+  printroveVariants String?
+  categoryId   String
+  category     Category    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  orderItems   OrderItem[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 
   @@index([categoryId])
+  @@index([isActive])
 }
 
 model Order {
@@ -51,30 +63,47 @@ model Order {
   orderNumber       String      @unique
   userId            String?
   user              User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /// PENDING | PAID | PACKED | SHIPPED | DELIVERED | CANCELLED
   status            String      @default("PENDING")
   subtotal          Float
   shippingFee       Float
   total             Float
   customerName      String
   customerEmail     String
-  shippingAddress   String
-  razorpayOrderId   String?
+  customerPhone     String
+  addressLine1      String
+  addressLine2      String?
+  city              String
+  state             String
+  postalCode        String
+  country           String      @default("India")
+  razorpayOrderId   String?     @unique
   razorpayPaymentId String?
+  printroveOrderId  String?
+  fulfilmentError   String?
+  paidAt            DateTime?
   items             OrderItem[]
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
+
+  @@index([customerEmail])
+  @@index([status])
 }
 
 model OrderItem {
-  id        String   @id @default(cuid())
-  orderId   String
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
-  quantity  Int
-  price     Float
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  /// Snapshot of product name/price/image at purchase time.
+  productName String
+  imageUrl    String
+  unitPrice   Float
+  quantity    Int
+  size        String?
+  color       String?
+  createdAt   DateTime @default(now())
 
   @@index([orderId])
   @@index([productId])

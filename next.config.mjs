@@ -1,11 +1,27 @@
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    remotePatterns: [
+    remotePatterns: [{ protocol: "https", hostname: "images.unsplash.com" }],
+  },
+  async redirects() {
+    // Old URLs from the previous two-catalog setup.
+    return [
+      { source: "/products", destination: "/shop", permanent: true },
+      { source: "/products/:slug", destination: "/shop/:slug", permanent: true },
+    ];
+  },
+  async headers() {
+    return [
       {
-        protocol: "https",
-        hostname: "images.unsplash.com",
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+        ],
       },
-    ],
+    ];
   },
 };
 
