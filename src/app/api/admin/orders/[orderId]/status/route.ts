@@ -1,31 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getOrderStore } from "@/lib/api-data";
-import { forbiddenResponse, getRequestUser, unauthorizedResponse } from "@/lib/api-auth";
+import { requireAdmin } from "@/lib/api-auth";
+import { ORDER_STATUSES } from "@/lib/pricing";
+import { setOrderStatus } from "@/lib/orders";
+import { prisma } from "@/lib/prisma";
 
-const schema = z.object({
-  status: z.enum(["PENDING", "PAID", "PACKED", "SHIPPED", "DELIVERED", "CANCELLED"]),
-});
+const schema = z.object({ status: z.enum(ORDER_STATUSES) });
 
-export async function PATCH(
-  request: NextRequest,
-  context: { params: Promise<{ orderId: string }> },
-) {
-  const user = getRequestUser(request);
-  if (!user) return unauthorizedResponse();
-  if (user.role !== "ADMIN") return forbiddenResponse();
+export async function PATCH(request: NextRequest, { params }: { params: { orderId: string } }) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
 
-  const { orderId } = await context.params;
-  const store = getOrderStore();
-  const order = store.find((item) => item.id === orderId);
-  if (!order) return NextResponse.json({ message: "Order not found" }, { status: 404 });
-
+  let status: z.infer<typeof schema>["status"];
   try {
-    const body = await request.json();
-    const { status } = schema.parse(body);
-    order.status = status;
-    return NextResponse.json({ order });
+    status = schema.parse(await request.json()).status;
   } catch {
-    return NextResponse.json({ message: "Invalid status payload" }, { status: 400 });
+    return NextResponse.json({ message: "Invalid status" }, { status: 400 });
   }
+
+  const order = await prisma.order.findUnique({ where: { id: params.orderId } });
+  if (!order) return NextResponse.json({ message: "Order not found" }, { status: 404 });
+  if (order.status === "PENDING" && status !== "CANCELLED") {
+    return NextResponse.json(
+      { message: "Unpaid orders can only be cancelled. Payment status is set by Razorpay." },
+      { status: 409 },
+    );
+  }
+
+  const updated = await setOrderStatus(order.id, status);
+  return NextResponse.json({ order: { id: order.id, status: updated?.status ?? status } });
 }

@@ -1,225 +1,162 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Product } from "@/types";
-import { ProductCard } from "@/components/store/product-card";
-
-const SIZE_OPTIONS = ["XS", "S", "M", "L", "XL"] as const;
-const PAGE_SIZE = 6;
-
-function getProductSizes(index: number) {
-  const basePatterns = [
-    ["S", "M", "L"],
-    ["M", "L", "XL"],
-    ["XS", "S", "M"],
-    ["S", "M", "L", "XL"],
-    ["M", "L"],
-  ];
-
-  return basePatterns[index % basePatterns.length] as string[];
-}
+import { Search } from "lucide-react";
+import { ProductGrid } from "@/components/store/product-card";
+import { Button, Input, Select } from "@/components/ui";
+import { cn } from "@/lib/utils";
+import type { Product } from "@/types";
 
 type SortOption = "newest" | "price-asc" | "price-desc";
+type CategoryOption = { name: string; slug: string; count: number };
 
-export function ShopClient({ products }: { products: Product[] }) {
+const PAGE_SIZE = 12;
+
+export function ShopClient({
+  products,
+  categories,
+  initialCategory,
+}: {
+  products: Product[];
+  categories: CategoryOption[];
+  initialCategory: string;
+}) {
+  const [category, setCategory] = useState(initialCategory);
   const [query, setQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [selectedSize, setSelectedSize] = useState("All");
-  const [priceMin, setPriceMin] = useState("");
-  const [priceMax, setPriceMax] = useState("");
-  const [sortBy, setSortBy] = useState<SortOption>("newest");
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [size, setSize] = useState("all");
+  const [sort, setSort] = useState<SortOption>("newest");
+  const [visible, setVisible] = useState(PAGE_SIZE);
 
-  const categories = useMemo(
-    () => ["All", ...Array.from(new Set(products.map((product) => product.category)))],
-    [products],
-  );
+  const allSizes = useMemo(() => {
+    const seen = new Set<string>();
+    for (const product of products) for (const value of product.sizes) seen.add(value);
+    return [...seen];
+  }, [products]);
 
-  const filteredProducts = useMemo(() => {
-    const min = priceMin ? Number(priceMin) : 0;
-    const max = priceMax ? Number(priceMax) : Number.POSITIVE_INFINITY;
-    const lowerQuery = query.trim().toLowerCase();
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const result = products.filter(
+      (product) =>
+        (category === "all" || product.categorySlug === category) &&
+        (size === "all" || product.sizes.includes(size)) &&
+        (!q || product.name.toLowerCase().includes(q) || product.description.toLowerCase().includes(q)),
+    );
+    if (sort === "price-asc") return [...result].sort((a, b) => a.price - b.price);
+    if (sort === "price-desc") return [...result].sort((a, b) => b.price - a.price);
+    return result;
+  }, [products, category, size, query, sort]);
 
-    const withIndex = products.map((product, index) => ({ product, index }));
+  const selectCategory = (slug: string) => {
+    setCategory(slug);
+    setVisible(PAGE_SIZE);
+    const url = slug === "all" ? "/shop" : `/shop?category=${slug}`;
+    window.history.replaceState(null, "", url);
+  };
 
-    const filtered = withIndex.filter(({ product, index }) => {
-      const inQuery =
-        lowerQuery.length === 0 ||
-        product.name.toLowerCase().includes(lowerQuery) ||
-        product.description.toLowerCase().includes(lowerQuery);
-      const inCategory =
-        selectedCategory === "All" || product.category === selectedCategory;
-      const inPrice = product.price >= min && product.price <= max;
-      const sizes = getProductSizes(index);
-      const inSize = selectedSize === "All" || sizes.includes(selectedSize);
-
-      return inQuery && inCategory && inPrice && inSize;
-    });
-
-    const sorted = [...filtered].sort((a, b) => {
-      if (sortBy === "price-asc") return a.product.price - b.product.price;
-      if (sortBy === "price-desc") return b.product.price - a.product.price;
-      return a.index - b.index;
-    });
-
-    return sorted.map((entry) => entry.product);
-  }, [priceMax, priceMin, products, query, selectedCategory, selectedSize, sortBy]);
-
-  const visibleProducts = filteredProducts.slice(0, visibleCount);
-  const hasMore = visibleCount < filteredProducts.length;
+  const activeName = categories.find((c) => c.slug === category)?.name;
+  const hasFilters = category !== "all" || size !== "all" || query !== "";
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold">Shop All Products</h1>
-        <p className="text-sm text-zinc-600">
-          Use filters to quickly find your fit.
-        </p>
+    <div className="page pt-10">
+      <h1 className="display text-5xl sm:text-7xl">{activeName ?? "Shop all"}</h1>
+
+      <div className="mt-8 flex gap-2 overflow-x-auto pb-2" role="tablist" aria-label="Categories">
+        {[{ name: "All", slug: "all", count: products.length }, ...categories].map((option) => (
+          <button
+            key={option.slug}
+            type="button"
+            role="tab"
+            aria-selected={category === option.slug}
+            onClick={() => selectCategory(option.slug)}
+            className={cn(
+              "shrink-0 border px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition-colors",
+              category === option.slug
+                ? "border-ink bg-ink text-white"
+                : "border-line bg-surface text-ink hover:border-ink",
+            )}
+          >
+            {option.name} <span className="ml-1 opacity-50">{option.count}</span>
+          </button>
+        ))}
       </div>
 
-      <section className="grid gap-4 rounded-xl border border-zinc-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="sm:col-span-2 lg:col-span-4">
-          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-zinc-500">
-            Search
-          </label>
-          <input
+      <div className="mt-4 grid gap-3 border-y border-line py-4 sm:grid-cols-[1fr_auto_auto]">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+          <Input
+            type="search"
+            aria-label="Search products"
+            placeholder="Search"
             value={query}
             onChange={(event) => {
-              setVisibleCount(PAGE_SIZE);
               setQuery(event.target.value);
+              setVisible(PAGE_SIZE);
             }}
-            placeholder="Search by product name"
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500"
+            className="pl-9"
           />
         </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-zinc-500">
-            Category
-          </label>
-          <select
-            value={selectedCategory}
+        {allSizes.length > 0 && (
+          <Select
+            aria-label="Filter by size"
+            value={size}
             onChange={(event) => {
-              setVisibleCount(PAGE_SIZE);
-              setSelectedCategory(event.target.value);
+              setSize(event.target.value);
+              setVisible(PAGE_SIZE);
             }}
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            className="sm:w-36"
           >
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {category}
+            <option value="all">All sizes</option>
+            {allSizes.map((value) => (
+              <option key={value} value={value}>
+                Size {value}
               </option>
             ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-zinc-500">
-            Size
-          </label>
-          <select
-            value={selectedSize}
-            onChange={(event) => {
-              setVisibleCount(PAGE_SIZE);
-              setSelectedSize(event.target.value);
-            }}
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-          >
-            <option value="All">All</option>
-            {SIZE_OPTIONS.map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-zinc-500">
-            Price Min (INR)
-          </label>
-          <input
-            type="number"
-            min={0}
-            value={priceMin}
-            onChange={(event) => {
-              setVisibleCount(PAGE_SIZE);
-              setPriceMin(event.target.value);
-            }}
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-          />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-zinc-500">
-            Price Max (INR)
-          </label>
-          <input
-            type="number"
-            min={0}
-            value={priceMax}
-            onChange={(event) => {
-              setVisibleCount(PAGE_SIZE);
-              setPriceMax(event.target.value);
-            }}
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-          />
-        </div>
-
-        <div className="lg:col-span-2">
-          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-zinc-500">
-            Sort By
-          </label>
-          <select
-            value={sortBy}
-            onChange={(event) => setSortBy(event.target.value as SortOption)}
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-          >
-            <option value="newest">Newest</option>
-            <option value="price-asc">Price: Low to High</option>
-            <option value="price-desc">Price: High to Low</option>
-          </select>
-        </div>
-      </section>
-
-      <div className="flex items-center justify-between text-sm text-zinc-600">
-        <p>{filteredProducts.length} products found</p>
-        <button
-          onClick={() => {
-            setQuery("");
-            setSelectedCategory("All");
-            setSelectedSize("All");
-            setPriceMin("");
-            setPriceMax("");
-            setSortBy("newest");
-            setVisibleCount(PAGE_SIZE);
-          }}
-          className="rounded-md border border-zinc-300 px-3 py-1.5 hover:bg-zinc-100"
+          </Select>
+        )}
+        <Select
+          aria-label="Sort products"
+          value={sort}
+          onChange={(event) => setSort(event.target.value as SortOption)}
+          className="sm:w-48"
         >
-          Reset filters
-        </button>
+          <option value="newest">Newest</option>
+          <option value="price-asc">Price: low to high</option>
+          <option value="price-desc">Price: high to low</option>
+        </Select>
       </div>
 
-      {visibleProducts.length > 0 ? (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {visibleProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+      <div className="mb-6 mt-4 flex items-center justify-between text-xs text-muted">
+        <p aria-live="polite">
+          {filtered.length} {filtered.length === 1 ? "product" : "products"}
+        </p>
+        {hasFilters && (
+          <button
+            type="button"
+            className="font-semibold uppercase tracking-[0.08em] text-ink underline-offset-4 hover:underline"
+            onClick={() => {
+              selectCategory("all");
+              setSize("all");
+              setQuery("");
+            }}
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
+
+      {filtered.length > 0 ? (
+        <ProductGrid products={filtered.slice(0, visible)} priorityCount={4} />
       ) : (
-        <div className="rounded-xl border border-zinc-200 bg-white p-10 text-center text-zinc-500">
-          No products match your current filters.
+        <div className="border border-dashed border-line p-16 text-center text-sm text-muted">
+          Nothing matches those filters.
         </div>
       )}
 
-      {hasMore && (
-        <div className="flex justify-center">
-          <button
-            onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
-            className="rounded-md bg-black px-5 py-2 text-sm font-medium text-white"
-          >
-            Load More
-          </button>
+      {visible < filtered.length && (
+        <div className="mt-12 flex justify-center">
+          <Button variant="secondary" onClick={() => setVisible((count) => count + PAGE_SIZE)}>
+            Load more
+          </Button>
         </div>
       )}
     </div>

@@ -1,39 +1,34 @@
-import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Archivo, Inter } from "next/font/google";
 import "./globals.css";
-import { Navbar } from "@/components/layout/navbar";
 import { CartProvider } from "@/components/providers/cart-provider";
 
-const inter = Inter({
-  variable: "--font-inter",
+const inter = Inter({ variable: "--font-inter", subsets: ["latin"], display: "swap" });
+const archivo = Archivo({
+  variable: "--font-archivo",
   subsets: ["latin"],
+  axes: ["wdth"],
+  display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
-});
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
 
 export const metadata: Metadata = {
-  title: "Overfit | Ecommerce",
-  description: "Production-ready Next.js ecommerce starter for Overfit clothing.",
+  metadataBase: new URL(siteUrl),
+  title: { default: "Overfit — Oversized streetwear", template: "%s · Overfit" },
+  description:
+    "Heavyweight tees, hoodies and outerwear cut oversized. Designed in India, printed on demand, shipped in 3–6 days.",
+  openGraph: { siteName: "Overfit", type: "website", locale: "en_IN" },
+  icons: { icon: "/overfit.svg" },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export const viewport: Viewport = { themeColor: "#f4f2ee" };
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="en"
-      className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full bg-zinc-50 text-zinc-900">
-        <CartProvider>
-          <Navbar />
-          <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
-        </CartProvider>
+    <html lang="en-IN" className={`${inter.variable} ${archivo.variable}`}>
+      <body className="min-h-screen">
+        <CartProvider>{children}</CartProvider>
       </body>
     </html>
   );

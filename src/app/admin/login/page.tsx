@@ -1,71 +1,85 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
+import { Button, Field, Input } from "@/components/ui";
 
-export default function AdminLoginPage() {
+function LoginForm() {
   const router = useRouter();
-  const [nextPath, setNextPath] = useState("/admin");
-  const [email, setEmail] = useState("admin@overfit.com");
-  const [password, setPassword] = useState("overfit-admin");
+  const searchParams = useSearchParams();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setNextPath(params.get("next") ?? "/admin");
-  }, []);
-
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("/api/admin/login", {
+      const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
+      const data = await response.json();
       if (!response.ok) {
-        setError("Invalid admin credentials.");
+        setError(data.message ?? "Unable to sign in.");
         return;
       }
-      router.push(nextPath);
+      if (data.user?.role !== "ADMIN") {
+        await fetch("/api/auth/logout", { method: "POST" });
+        setError("This account doesn't have admin access.");
+        return;
+      }
+      const next = searchParams.get("next");
+      // Only follow same-site admin paths (prevents open redirects).
+      router.push(next && next.startsWith("/admin") ? next : "/admin");
       router.refresh();
+    } catch {
+      setError("Network error. Try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="mx-auto max-w-md rounded-xl border border-zinc-200 bg-white p-6">
-      <h1 className="text-2xl font-semibold">Admin Login</h1>
-      <p className="mt-1 text-sm text-zinc-600">Private access for Overfit admin.</p>
-      <form onSubmit={onSubmit} className="mt-5 space-y-3">
-        <input
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          className="w-full rounded border border-zinc-300 p-2 text-sm"
-          placeholder="Email"
-        />
-        <input
+    <form onSubmit={onSubmit} className="mt-8 space-y-5">
+      <Field label="Email" htmlFor="email">
+        <Input id="email" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
+      </Field>
+      <Field label="Password" htmlFor="password">
+        <Input
+          id="password"
           type="password"
+          autoComplete="current-password"
+          required
           value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          className="w-full rounded border border-zinc-300 p-2 text-sm"
-          placeholder="Password"
+          onChange={(e) => setPassword(e.target.value)}
         />
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-md bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-70"
-        >
-          {loading ? "Signing in..." : "Sign in"}
-        </button>
-      </form>
+      </Field>
+      {error && (
+        <p className="text-sm text-danger" role="alert">
+          {error}
+        </p>
+      )}
+      <Button type="submit" size="lg" className="w-full" disabled={loading}>
+        {loading ? "Signing in…" : "Sign in"}
+      </Button>
+    </form>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-paper p-4">
+      <div className="w-full max-w-sm bg-surface p-8">
+        <p className="display text-3xl">Overfit</p>
+        <p className="label mt-1">Admin</p>
+        <Suspense>
+          <LoginForm />
+        </Suspense>
+      </div>
     </div>
   );
 }
