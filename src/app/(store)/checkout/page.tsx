@@ -7,11 +7,15 @@ import { isRazorpayConfigured } from "@/lib/razorpay";
 export const metadata: Metadata = { title: "Checkout", robots: { index: false } };
 
 export default async function CheckoutPage() {
+  const paymentsLive = isRazorpayConfigured();
+  // Matches /api/checkout: without Razorpay keys, test orders are only allowed outside production.
+  const testMode = !paymentsLive && process.env.NODE_ENV !== "production";
   const user = await getSessionUser();
   const profile = user?.role === "CUSTOMER" ? await getCustomerProfile(user.id) : null;
   return (
     <CheckoutForm
-      paymentsLive={isRazorpayConfigured()}
+      paymentsLive={paymentsLive}
+      testMode={testMode}
       saved={
         profile && {
           customerName: profile.name,
