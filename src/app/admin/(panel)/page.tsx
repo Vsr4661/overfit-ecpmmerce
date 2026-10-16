@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AdminHeading } from "@/components/admin/admin-heading";
+import { missingBusinessDetails } from "@/lib/business";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { Price } from "@/components/ui";
 import { listOrders } from "@/lib/orders";
@@ -24,6 +25,7 @@ export default async function AdminDashboardPage() {
     listOrders(8),
   ]);
 
+  const missing = missingBusinessDetails();
   const revenue = paid30._sum.total ?? 0;
   const orderCount = paid30._count;
 
@@ -46,6 +48,13 @@ export default async function AdminDashboardPage() {
           </div>
         ))}
       </div>
+
+      {missing.length > 0 && (
+        <Link href="/admin/settings" className="block border border-accent bg-accent/10 p-3 text-sm">
+          Your policy and contact pages are missing {missing.length} business{" "}
+          {missing.length === 1 ? "detail" : "details"} required before taking live payments. Review →
+        </Link>
+      )}
 
       {(failedFulfilment > 0 || lowStock > 0) && (
         <div className="space-y-2">

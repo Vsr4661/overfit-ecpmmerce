@@ -325,7 +325,12 @@ export function CheckoutForm({ paymentsLive }: { paymentsLive: boolean }) {
             <Lock className="h-4 w-4" />
             {submitting ? "Processing…" : paymentsLive ? "Pay securely" : "Place test order"}
           </Button>
-          <p className="text-center text-xs text-muted">UPI, cards, netbanking and wallets via Razorpay</p>
+          <p className="text-center text-xs text-muted">
+            By placing this order you agree to our{" "}
+            <Link href="/terms" className="underline">Terms</Link>,{" "}
+            <Link href="/refunds" className="underline">Refund policy</Link> and{" "}
+            <Link href="/privacy" className="underline">Privacy policy</Link>.
+          </p>
         </aside>
       </form>
     </div>

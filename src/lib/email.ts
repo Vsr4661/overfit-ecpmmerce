@@ -1,5 +1,6 @@
 import "server-only";
 import { orderAccessToken } from "@/lib/auth";
+import { POLICY } from "@/lib/business";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency } from "@/lib/utils";
 
@@ -79,7 +80,7 @@ export async function sendOrderConfirmation(orderId: string) {
 
   const html = layout(
     `Thanks, ${firstName}. Your order is confirmed.`,
-    `<p style="margin:0 0 20px;font-size:14px;color:#555">Order <strong>${order.orderNumber}</strong>. We'll print it and email you when it ships, usually within 3–6 business days.</p>
+    `<p style="margin:0 0 20px;font-size:14px;color:#555">Order <strong>${order.orderNumber}</strong>. We'll print it and email you when it ships, usually within ${POLICY.dispatchDays} business days.</p>
 <table width="100%" cellpadding="0" cellspacing="0">${rows}</table>
 <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px">${totals}</table>
 <p style="margin:20px 0 0;font-size:13px;color:#555">Shipping to: ${escapeHtml(

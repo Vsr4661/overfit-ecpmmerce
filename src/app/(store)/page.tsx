@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { POLICY } from "@/lib/business";
 import { ArrowRight } from "lucide-react";
 import { ProductGrid } from "@/components/store/product-card";
 import { ProductImage, buttonClasses } from "@/components/ui";
@@ -11,7 +12,7 @@ const PROMISES = [
   "Cut oversized",
   "Printed on demand in India",
   `Free shipping over ${formatCurrency(FREE_SHIPPING_THRESHOLD)}`,
-  "7-day exchanges",
+  `${POLICY.exchangeWindowDays}-day size exchanges`,
   "UPI · cards · netbanking",
 ];
 
@@ -124,8 +125,8 @@ export default async function HomePage() {
         <div className="grid gap-px border border-line bg-line sm:grid-cols-3">
         {[
           { title: "Printed to order", body: "Every piece is printed after you buy it. Less waste, no dead stock." },
-          { title: "Ships in 3–6 days", body: `Tracked delivery across India. Free over ${formatCurrency(FREE_SHIPPING_THRESHOLD)}.` },
-          { title: "Easy exchanges", body: "Wrong size? Exchange within 7 days of delivery." },
+          { title: `Ships in ${POLICY.dispatchDays} days`, body: `Tracked delivery across India. Free over ${formatCurrency(FREE_SHIPPING_THRESHOLD)}.` },
+          { title: "Easy exchanges", body: `Wrong size? Exchange within ${POLICY.exchangeWindowDays} days of delivery.` },
         ].map((item) => (
           <div key={item.title} className="bg-paper p-8">
             <h3 className="text-sm font-bold uppercase tracking-[0.08em]">{item.title}</h3>

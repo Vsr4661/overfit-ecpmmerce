@@ -3,14 +3,15 @@
 Storefront for Overfit, an oversized-streetwear brand. Products are printed on demand by
 [Printrove](https://printrove.com) and paid for with [Razorpay](https://razorpay.com).
 
-**Stack:** Next.js 14 (App Router) · TypeScript · Tailwind CSS · Prisma + SQLite
+**Stack:** Next.js 14 (App Router) · TypeScript · Tailwind CSS · Prisma + Postgres
 
 ## Getting started
 
 ```bash
 npm install
 cp .env.example .env          # then fill in AUTH_SECRET and ADMIN_PASSWORD (see below)
-npm run db:migrate            # creates prisma/dev.db and seeds the admin user + sample products
+npm run db:up                 # starts Postgres in Docker on port 5433
+npm run db:migrate            # creates the tables and seeds the admin user + sample products
 npm run dev                   # http://localhost:3001
 ```
 
@@ -88,10 +89,21 @@ the server log instead, so nothing breaks locally.
 | `npm run db:studio` | Browse the database |
 | `npm run sync:printrove` | Import the Printrove Product Library |
 
+## Deploying to Vercel
+
+1. Import the GitHub repo at [vercel.com/new](https://vercel.com/new). Framework: Next.js (detected).
+2. In the project, open **Storage → Create Database → Neon (Postgres)** and connect it. This sets
+   `DATABASE_URL` and `DATABASE_URL_UNPOOLED` automatically.
+3. Add the environment variables from `.env.example` (at minimum `AUTH_SECRET` and `ADMIN_PASSWORD`).
+4. Deploy. Each build runs `prisma migrate deploy` and the seed (admin user, plus sample products if
+   the catalog is empty and `SEED_SAMPLE_PRODUCTS` isn't `"false"`).
+5. Set `NEXT_PUBLIC_SITE_URL` to your live URL and redeploy, so emails and the sitemap use it.
+
+Checkout is disabled in production until Razorpay keys are set (test mode only runs locally).
+
 ## Before going live
 
-- Move from SQLite to Postgres (change `provider` in `prisma/schema.prisma`) if you deploy to a
-  serverless host. SQLite needs a persistent disk.
+- Fill in `src/lib/business.ts` (legal name, address, support contacts, grievance officer).
 - Set `NODE_ENV=production`, real Razorpay keys and the webhook secret.
 - Configure Resend so customers actually receive order emails.
 - Set `WHATSAPP_NUMBER` to show the support chat button.

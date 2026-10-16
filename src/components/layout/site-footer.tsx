@@ -15,13 +15,24 @@ export function SiteFooter({ categories }: { categories: NavCategory[] }) {
       links: [
         { href: "/track", label: "Track your order" },
         { href: "/cart", label: "Your cart" },
+        { href: "/shipping", label: "Shipping" },
+        { href: "/refunds", label: "Refunds & exchanges" },
+        { href: "/contact", label: "Contact us" },
+        { href: "/about", label: "About" },
+      ],
+    },
+    {
+      title: "Legal",
+      links: [
+        { href: "/privacy", label: "Privacy policy" },
+        { href: "/terms", label: "Terms & conditions" },
       ],
     },
   ];
 
   return (
     <footer className="mt-24 bg-ink text-white">
-      <div className="page grid gap-12 py-16 md:grid-cols-[2fr_1fr_1fr]">
+      <div className="page grid gap-12 py-16 md:grid-cols-[2fr_1fr_1fr_1fr]">
         <div className="space-y-4">
           <p className="display text-5xl sm:text-6xl">Overfit</p>
           <p className="max-w-sm text-sm text-white/60">

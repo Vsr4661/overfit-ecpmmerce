@@ -3,8 +3,11 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  /// Pooled connection used by the app (on Vercel + Neon this is set automatically).
+  url       = env("DATABASE_URL")
+  /// Direct connection used for migrations.
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 model User {

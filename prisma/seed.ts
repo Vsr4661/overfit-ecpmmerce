@@ -124,6 +124,11 @@ async function main() {
   });
   console.log(`Admin user ready: ${adminEmail}`);
 
+  if (process.env.SEED_SAMPLE_PRODUCTS === "false") {
+    console.log("SEED_SAMPLE_PRODUCTS=false; skipping sample products.");
+    return;
+  }
+
   const productCount = await prisma.product.count();
   if (productCount > 0) {
     console.log(`Catalog already has ${productCount} products; skipping sample products.`);
