@@ -3,7 +3,8 @@ import { requireAdmin } from "@/lib/api-auth";
 import { isPrintroveConfigured } from "@/lib/printrove";
 import { syncPrintroveCatalog } from "@/lib/printrove-sync";
 
-export const maxDuration = 300;
+// Vercel Hobby caps functions at 60s; for large libraries use `npm run sync:printrove` instead.
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   const denied = await requireAdmin(request);

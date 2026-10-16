@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3001",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && prisma migrate deploy && prisma db seed && next build",
     "start": "next start -p 3001",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
@@ -14,7 +14,9 @@
     "db:studio": "prisma studio",
     "sync:printrove": "tsx --env-file=.env scripts/sync-printrove.ts",
     "postinstall": "prisma generate",
-    "test": "tsx --test tests/*.test.ts"
+    "test": "tsx --test tests/*.test.ts",
+    "build:local": "next build",
+    "db:up": "docker compose up -d"
   },
   "dependencies": {
     "@prisma/client": "^5.0.0",
