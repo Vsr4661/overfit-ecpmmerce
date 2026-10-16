@@ -69,7 +69,8 @@ declare global {
   }
 }
 
-export function CheckoutForm({ paymentsLive }: { paymentsLive: boolean }) {
+export function CheckoutForm({ paymentsLive, testMode }: { paymentsLive: boolean; testMode: boolean }) {
+  const checkoutOpen = paymentsLive || testMode;
   const router = useRouter();
   const { items, hydrated, subtotal, clearCart } = useCart();
   const [form, setForm] = useState<Form>(EMPTY);
@@ -206,7 +207,14 @@ export function CheckoutForm({ paymentsLive }: { paymentsLive: boolean }) {
       {paymentsLive && <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />}
       <h1 className="display text-5xl sm:text-6xl">Checkout</h1>
 
-      {!paymentsLive && (
+      {!checkoutOpen && (
+        <p className="mt-6 border border-accent bg-accent/10 p-3 text-sm" role="status">
+          <strong>Checkout isn&apos;t open yet.</strong> Online payments haven&apos;t been set up, so orders can&apos;t be
+          placed right now. You can still browse and build your cart.
+        </p>
+      )}
+
+      {testMode && (
         <p className="mt-6 border border-accent bg-accent/10 p-3 text-sm">
           <strong>Test mode:</strong> Razorpay keys aren&apos;t configured, so orders are marked paid without charging.
           Add <code>RAZORPAY_KEY_ID</code> and <code>RAZORPAY_KEY_SECRET</code> to take real payments.
@@ -321,9 +329,15 @@ export function CheckoutForm({ paymentsLive }: { paymentsLive: boolean }) {
             </p>
           )}
 
-          <Button type="submit" variant="accent" size="lg" className="w-full" disabled={submitting}>
+          <Button type="submit" variant="accent" size="lg" className="w-full" disabled={submitting || !checkoutOpen}>
             <Lock className="h-4 w-4" />
-            {submitting ? "Processing…" : paymentsLive ? "Pay securely" : "Place test order"}
+            {submitting
+              ? "Processing…"
+              : paymentsLive
+                ? "Pay securely"
+                : testMode
+                  ? "Place test order"
+                  : "Checkout unavailable"}
           </Button>
           <p className="text-center text-xs text-muted">
             By placing this order you agree to our{" "}
